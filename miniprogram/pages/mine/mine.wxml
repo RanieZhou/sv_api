@@ -1,0 +1,60 @@
+<view class="container px-4 py-4">
+
+  <!-- 用户头部信息 -->
+  <view class="card flex items-center justify-between">
+    <view class="flex items-center gap-3">
+      <view class="avatar-box">
+        <text class="avatar-icon">👤</text>
+      </view>
+      <view>
+        <view class="text-base font-bold text-white mb-1">去水印尊贵用户</view>
+        <view class="text-xs text-slate-400">每日基础额度重置时间: 00:00</view>
+      </view>
+    </view>
+    <view class="badge">今日已用 {{usedToday}} 次</view>
+  </view>
+
+  <!-- 功能列表 -->
+  <view class="card p-0 overflow-hidden">
+    <view class="list-item" bindtap="openSubscribeModal">
+      <view class="flex items-center gap-2">
+        <text class="item-icon">🔑</text>
+        <text class="text-sm text-white">订阅 / 购买专属 API Key</text>
+      </view>
+      <text class="arrow">▸</text>
+    </view>
+
+    <navigator url="/pages/help/help" class="list-item border-t">
+      <view class="flex items-center gap-2">
+        <text class="item-icon">📖</text>
+        <text class="text-sm text-white">使用教程 & 支持平台</text>
+      </view>
+      <text class="arrow">▸</text>
+    </navigator>
+
+    <button class="list-item border-t btn-reset" open-type="contact">
+      <view class="flex items-center gap-2">
+        <text class="item-icon">💬</text>
+        <text class="text-sm text-white">联系在线客服 / 问题反馈</text>
+      </view>
+      <text class="arrow">▸</text>
+    </button>
+
+    <button class="list-item border-t btn-reset" open-type="share">
+      <view class="flex items-center gap-2">
+        <text class="item-icon">🎁</text>
+        <text class="text-sm text-white">分享小程序给好友</text>
+      </view>
+      <text class="arrow">▸</text>
+    </button>
+  </view>
+
+  <!-- 免责声明 -->
+  <view class="disclaimer-box text-center">
+    <view class="text-xs text-slate-500 mb-1">免责声明</view>
+    <view class="text-[20rpx] text-slate-600 leading-relaxed px-4">
+      {{config.disclaimer || '本小程序仅提供技术解析工具，素材版权均归原平台及创作人所有。'}}
+    </view>
+  </view>
+
+</view>

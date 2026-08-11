@@ -1,0 +1,15 @@
+{
+  "miniprogramRoot": "./",
+  "projectname": "去水印短视频小程序",
+  "description": "极速无水印视频与图集下载小程序",
+  "appid": "touristappid",
+  "setting": {
+    "urlCheck": false,
+    "es6": true,
+    "enhance": true,
+    "postcss": true,
+    "minified": true
+  },
+  "compileType": "miniprogram",
+  "libVersion": "3.3.4"
+}

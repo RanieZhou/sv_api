@@ -1,0 +1,88 @@
+<view class="container px-4 py-3">
+
+  <!-- 顶部通告栏 -->
+  <view class="notice-bar flex items-center mb-3">
+    <text class="notice-tag">通告</text>
+    <text class="notice-text truncate">{{config.mp_notice || '复制短视频/图集分享链接，打开小程序一键去水印！'}}</text>
+  </view>
+
+  <!-- 解析输入卡片 -->
+  <view class="card">
+    <view class="flex items-center justify-between mb-3">
+      <view class="text-sm font-semibold text-white">粘贴视频/图集链接</view>
+      <view class="badge">今日可用: {{remainingQuota}} 次</view>
+    </view>
+
+    <!-- 文本框 -->
+    <textarea
+      class="input-textarea"
+      value="{{inputUrl}}"
+      bindinput="onInputChange"
+      placeholder="粘贴抖音、快手、小红书、B站等App复制的完整分享文字..."
+      placeholder-class="placeholder-style"
+      maxlength="500"
+    ></textarea>
+
+    <!-- 操作工具按钮 -->
+    <view class="flex items-center justify-between mt-3 mb-4">
+      <button class="btn-tool" bindtap="pasteClipboard">
+        <text>📋 一键粘贴</text>
+      </button>
+      <button class="btn-tool" bindtap="clearInput">
+        <text>🗑️ 清空</text>
+      </button>
+    </view>
+
+    <!-- 解析主按钮 -->
+    <button class="btn-primary" bindtap="startParse" loading="{{loading}}">
+      {{loading ? '正在解析中...' : '🚀 提取无水印资源'}}
+    </button>
+  </view>
+
+  <!-- 结果展示区域 -->
+  <view class="card result-card" wx:if="{{hasResult}}">
+    <view class="text-sm font-semibold text-white mb-3">解析结果</view>
+
+    <!-- 标题与作者 -->
+    <view class="flex items-center gap-2 mb-3" wx:if="{{resultData.title || resultData.desc}}">
+      <view class="text-xs text-slate-300 font-medium leading-relaxed">
+        {{resultData.title || resultData.desc}}
+      </view>
+    </view>
+
+    <!-- 视频预览与下载 -->
+    <block wx:if="{{videoUrl}}">
+      <view class="video-wrapper mb-3">
+        <video class="video-player" src="{{videoUrl}}" controls preload="metadata"></video>
+      </view>
+
+      <view class="grid-actions mb-3">
+        <button class="btn-action primary" bindtap="saveVideo">
+          <text>📥 保存无水印视频到相册</text>
+        </button>
+        <button class="btn-action secondary mt-2" bindtap="copyLink">
+          <text>🔗 复制无水印直链</text>
+        </button>
+      </view>
+    </block>
+
+    <!-- 图集预览与下载 -->
+    <block wx:if="{{imageList.length > 0}}">
+      <view class="text-xs text-cyan-400 mb-2">高清图集 (共 {{imageList.length}} 张)</view>
+      <view class="image-grid mb-3">
+        <block wx:for="{{imageList}}" wx:key="index">
+          <image class="grid-img" src="{{item}}" mode="aspectFill" bindtap="previewImage" data-src="{{item}}"></image>
+        </block>
+      </view>
+      <button class="btn-action primary mb-2" bindtap="saveAllImages">
+        <text>🖼️ 保存全部高清图集到相册</text>
+      </button>
+    </block>
+  </view>
+
+  <!-- 流量主 Banner 广告位 (后台配置过 ad_banner_id 时展示) -->
+  <view class="my-3" wx:if="{{config.ad_banner_id}}">
+    <ad unit-id="{{config.ad_banner_id}}"></ad>
+  </view>
+
+</view>
