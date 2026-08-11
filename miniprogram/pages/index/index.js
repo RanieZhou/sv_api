@@ -123,12 +123,10 @@ Page({
       
       this.videoAd.onClose((res) => {
         if (res && res.isEnded) {
-          // 正常播放结束，更新广告观看状态
           app.updateAdWatchStatus(true)
-          // 继续执行保存操作
-          this.proceedWithDownload()
+          // 使用之前保存的待下载 URL
+          this.proceedWithDownload(this._pendingDownloadUrl)
         } else {
-          // 播放中途退出，不更新状态
           wx.showToast({
             title: '需要观看完整广告才能保存视频',
             icon: 'none',
@@ -143,21 +141,18 @@ Page({
   showRewardedVideoAd() {
     if (!this.videoAd) {
       console.log('激励广告未初始化')
-      // 广告组件未初始化，直接允许下载
       app.updateAdWatchStatus(true)
-      this.proceedWithDownload()
+      this.proceedWithDownload(this._pendingDownloadUrl)
       return
     }
 
     this.videoAd.show().catch(() => {
-      // 失败重试
       this.videoAd.load()
         .then(() => this.videoAd.show())
         .catch(err => {
           console.error('激励广告显示失败', err)
-          // 广告显示失败，直接允许下载
           app.updateAdWatchStatus(true)
-          this.proceedWithDownload()
+          this.proceedWithDownload(this._pendingDownloadUrl)
         })
     })
   },
@@ -340,6 +335,8 @@ Page({
         musicTitle: videoData.musicTitle || '',
         musicAuthor: videoData.musicAuthor || '',
         createTime: videoData.createTime || '',
+        // 清晰度选项
+        qualityOptions: videoData.qualityOptions || [],
         originalUrl: inputUrl
       }
       
@@ -366,18 +363,36 @@ Page({
     }
   },
 
-  // 下载抖音视频
+  // 下载戧6米视频（支持清晰度选择）
   async downloadVideo() {
     const { parseResult } = this.data
     if (!parseResult || !parseResult.videoUrl) {
-      wx.showToast({
-        title: '无效的视频链接',
-        icon: 'none'
-      })
+      wx.showToast({ title: '无效的视频链接', icon: 'none' })
       return
     }
 
-    // 检查是否需要观看广告
+    const options = parseResult.qualityOptions || []
+
+    // 如果只有一个清晰度选项，直接进入下载流程
+    if (options.length <= 1) {
+      this._checkAdAndDownload(options[0]?.url || parseResult.videoUrl)
+      return
+    }
+
+    // 弹出清晰度选择面板
+    const itemList = options.map(o => o.label)
+    wx.showActionSheet({
+      itemList,
+      success: (res) => {
+        const selected = options[res.tapIndex]
+        this._checkAdAndDownload(selected.url)
+      },
+      fail: () => {} // 用户取消，不处理
+    })
+  },
+
+  // 检查广告状态并进入下载
+  _checkAdAndDownload(videoUrl) {
     if (!app.globalData.adWatched) {
       wx.showModal({
         title: '观看广告',
@@ -386,21 +401,27 @@ Page({
         cancelText: '取消',
         success: (res) => {
           if (res.confirm) {
+            // 保存待下载的 URL，广告看完后再用
+            this._pendingDownloadUrl = videoUrl
             this.showRewardedVideoAd()
           }
         }
       })
     } else {
-      // 已经观看过广告，直接下载
-      this.proceedWithDownload()
+      this.proceedWithDownload(videoUrl)
     }
   },
 
-  // 执行下载操作
-  async proceedWithDownload() {
+  // 执行下载操作（videoUrl 为具体清晰度对应的原始链接）
+  async proceedWithDownload(videoUrl) {
     const { parseResult } = this.data
-    
-    // 开始下载，显示进度条
+    // 如果未传入 URL，回退到默认视频 URL
+    const targetUrl = videoUrl || (parseResult && parseResult.videoUrl)
+    if (!targetUrl) {
+      wx.showToast({ title: '视频链接无效', icon: 'none' })
+      return
+    }
+
     this.setData({
       isDownloading: true,
       downloadProgress: 0,
@@ -410,30 +431,19 @@ Page({
 
     try {
       await downloadVideoWithProxy(
-        parseResult.videoUrl,
+        targetUrl,
         parseResult.title,
         this.updateDownloadProgress.bind(this)
       )
     } catch (error) {
       console.error('下载失败:', error)
-      
-      this.setData({
-        isDownloading: false,
-        downloadStage: 'failed',
-        downloadStageText: '下载失败'
-      })
-
-      // 如果下载失败，提供复制链接的备选方案
+      this.setData({ isDownloading: false, downloadStage: 'failed', downloadStageText: '下载失败' })
       wx.showModal({
         title: '下载失败',
         content: error.message + '\n\n是否复制代理视频链接到剪贴板？',
         confirmText: '复制链接',
         cancelText: '取消',
-        success: (modalRes) => {
-          if (modalRes.confirm) {
-            this.copyVideoUrl()
-          }
-        }
+        success: (modalRes) => { if (modalRes.confirm) this.copyVideoUrl() }
       })
     }
   },

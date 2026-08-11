@@ -115,7 +115,29 @@ function parseDouyinVideo(shareContent, apiKey = DEFAULT_API_KEY) {
             // 内容类型：video / images
             const contentType = (imgs.length > 0 && !videoUrl) ? 'images' : (d.type || 'video');
 
-            // 话题标签
+            // 清晰度选项（从 video_backup 提取）
+            const QUALITY_ORDER = ['2160p','1440p','1080p','720p','576p','540p','480p','360p'];
+            let qualityOptions = [];
+            if (d.video_backup && d.video_backup.length > 0) {
+              // 只保留 mp4 格式，按质量分组后取最高码率的
+              const qualityMap = {};
+              d.video_backup.forEach(item => {
+                if (item.format !== 'mp4' || !item.url || !item.quality) return;
+                const q = item.quality;
+                if (!qualityMap[q] || item.bit_rate > qualityMap[q].bit_rate) {
+                  qualityMap[q] = item;
+                }
+              });
+              // 按预设顺序排列
+              qualityOptions = QUALITY_ORDER
+                .filter(q => qualityMap[q])
+                .map(q => ({ label: q, url: qualityMap[q].url, bitRate: qualityMap[q].bit_rate }));
+            }
+            // 如果没有 video_backup，用原始 url 作为唯一选项
+            if (qualityOptions.length === 0 && videoUrl) {
+              qualityOptions = [{ label: '默认', url: videoUrl, bitRate: 0 }];
+            }
+
             const hashtags = (extra.hashtags || []).map(t => t.name || '').filter(Boolean);
 
             // 背景音乐
@@ -155,6 +177,8 @@ function parseDouyinVideo(shareContent, apiKey = DEFAULT_API_KEY) {
               musicTitle: music.title || '',
               musicAuthor: music.author || '',
               createTime: createTime,
+              // 清晰度选项
+              qualityOptions: qualityOptions,
             };
             
             resolve(formattedData);

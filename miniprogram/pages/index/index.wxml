@@ -204,7 +204,12 @@
       <view class="result-actions" wx:if="{{parseResult.type !== 'images'}}">
         <button class="download-btn primary" bindtap="downloadVideo" disabled="{{isDownloading}}">
           <text class="btn-icon">💾</text>
-          <text>{{isDownloading ? '下载中...' : '保存到相册'}}</text>
+          <view class="btn-text-wrap">
+            <text>{{isDownloading ? '下载中...' : '保存到相册'}}</text>
+            <text class="quality-hint" wx:if="{{!isDownloading && parseResult.qualityOptions && parseResult.qualityOptions.length > 1}}">
+              可选 {{parseResult.qualityOptions.length}} 种清晰度
+            </text>
+          </view>
         </button>
         <button class="copy-btn secondary" bindtap="copyVideoUrl" disabled="{{isDownloading}}">
           <text class="btn-icon">🔗</text>

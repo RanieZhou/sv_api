@@ -319,6 +319,22 @@
   font-size: 24rpx;
 }
 
+/* 下载按钮内文字组 */
+.btn-text-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4rpx;
+}
+
+/* 清晰度提示小字 */
+.quality-hint {
+  font-size: 20rpx;
+  font-weight: 400;
+  opacity: 0.85;
+  letter-spacing: 0;
+}
+
 /* 下载进度条样式 */
 .download-progress-container {
   width: 100%;
