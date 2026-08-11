@@ -315,17 +315,18 @@ Page({
       // 完整解析结果，包含所有可展示字段
       const formattedData = {
         success: true,
-        type: videoData.type || 'video',           // 内容类型：video / images
+        type: videoData.type || 'video',
         title: videoData.title || '短视频作品',
         // 作者信息
         author: videoData.author || '未知作者',
         authorAvatar: videoData.authorAvatar || '',
         authorId: videoData.authorId || '',
+        followerCount: videoData.followerCount || 0,
         // 媒体资源
         videoUrl: videoData.videoUrl || '',
         cover: videoData.cover || '',
-        proxyVideoUrl: videoData.proxyVideoUrl,    // 视频播放必须用代理URL
-        images: videoData.images || [],            // 图集列表
+        proxyVideoUrl: videoData.proxyVideoUrl,
+        images: videoData.images || [],
         // 视频参数
         duration: videoData.duration || 0,
         size: videoData.size || 0,
@@ -334,6 +335,11 @@ Page({
         commentCount: videoData.commentCount || 0,
         collectCount: videoData.collectCount || 0,
         shareCount: videoData.shareCount || 0,
+        // 附加信息
+        hashtags: videoData.hashtags || [],
+        musicTitle: videoData.musicTitle || '',
+        musicAuthor: videoData.musicAuthor || '',
+        createTime: videoData.createTime || '',
         originalUrl: inputUrl
       }
       

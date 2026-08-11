@@ -100,15 +100,34 @@ function parseDouyinVideo(shareContent, apiKey = DEFAULT_API_KEY) {
             const videoUrl = d.url || d.video_url || d.play_url || (d.video_urls && d.video_urls[0]) || '';
             const authorObj = d.author || {};
             const authorName = typeof authorObj === 'string' ? authorObj : (authorObj.name || '未知作者');
+            const extra = d.extra || {};
+            const stats = extra.statistics || {};
+            const authorExtra = extra.author_extra || {};
 
-            // 图集模式：提取图片列表
+            // 图集模式：提取图片列表（过滤空项）
             let imgs = [];
             if (d.images && d.images.length > 0) {
-              imgs = d.images.map(img => typeof img === 'string' ? img : (img.url || img.url_list?.[0] || ''));
+              imgs = d.images
+                .map(img => typeof img === 'string' ? img : (img.url || img.url_list?.[0] || ''))
+                .filter(Boolean);
             }
 
             // 内容类型：video / images
             const contentType = (imgs.length > 0 && !videoUrl) ? 'images' : (d.type || 'video');
+
+            // 话题标签
+            const hashtags = (extra.hashtags || []).map(t => t.name || '').filter(Boolean);
+
+            // 背景音乐
+            const music = d.music || {};
+
+            // 发布时间（unix秒 → 格式化）
+            const createTimestamp = extra.create_time || 0;
+            let createTime = '';
+            if (createTimestamp) {
+              const dt = new Date(createTimestamp * 1000);
+              createTime = `${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,'0')}-${String(dt.getDate()).padStart(2,'0')}`;
+            }
 
             const formattedData = {
               type: contentType,
@@ -117,6 +136,7 @@ function parseDouyinVideo(shareContent, apiKey = DEFAULT_API_KEY) {
               author: authorName,
               authorAvatar: typeof authorObj === 'object' ? (authorObj.avatar || authorObj.avatar_url || '') : '',
               authorId: typeof authorObj === 'object' ? (String(authorObj.id || authorObj.uid || '')) : '',
+              followerCount: authorExtra.follower_count || 0,
               // 媒体资源
               videoUrl: videoUrl,
               cover: d.cover || d.cover_url || '',
@@ -125,11 +145,16 @@ function parseDouyinVideo(shareContent, apiKey = DEFAULT_API_KEY) {
               // 视频参数
               duration: d.duration ? Math.round(d.duration / 1000) : 0,
               size: d.size || 0,
-              // 互动数据
-              likeCount: d.digg_count || d.like_count || d.statistics?.digg_count || 0,
-              commentCount: d.comment_count || d.statistics?.comment_count || 0,
-              collectCount: d.collect_count || d.statistics?.collect_count || 0,
-              shareCount: d.share_count || d.statistics?.share_count || 0,
+              // 互动数据（正确路径：extra.statistics）
+              likeCount: stats.digg_count || 0,
+              commentCount: stats.comment_count || 0,
+              collectCount: stats.collect_count || 0,
+              shareCount: stats.share_count || 0,
+              // 附加信息
+              hashtags: hashtags,
+              musicTitle: music.title || '',
+              musicAuthor: music.author || '',
+              createTime: createTime,
             };
             
             resolve(formattedData);
