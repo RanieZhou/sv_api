@@ -77,7 +77,7 @@ export async function queryOne(sql, params = []) {
     const stmt = sqliteDb.prepare(sql.replace(/LIMIT 1/i, ''));
     return stmt.get(...params) || null;
   } else {
-    const [rows] = await mysqlPool.execute(sql, params);
+    const [rows] = await mysqlPool.query(sql, params);
     return rows.length > 0 ? rows[0] : null;
   }
 }
@@ -93,7 +93,7 @@ export async function queryAll(sql, params = []) {
     const stmt = sqliteDb.prepare(querySql);
     return stmt.all(...params);
   } else {
-    const [rows] = await mysqlPool.execute(sql, params);
+    const [rows] = await mysqlPool.query(sql, params);
     return rows;
   }
 }
