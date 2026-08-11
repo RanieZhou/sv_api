@@ -52,7 +52,7 @@
   font-size: 24rpx;
 }
 
-/* 输入框 */
+/* 粘贴文本框 */
 .input-textarea {
   width: 100%;
   height: 180rpx;
@@ -71,53 +71,70 @@
   font-size: 26rpx;
 }
 
-.btn-tool {
-  background: rgba(255, 255, 255, 0.06);
-  border: 1rpx solid rgba(255, 255, 255, 0.1);
-  color: #cbd5e1;
-  font-size: 24rpx;
-  padding: 12rpx 28rpx;
-  border-radius: 14rpx;
+/* 并列两个按钮：一键粘贴 & 开始提取 */
+.btn-action-half {
+  flex: 1;
+  border-radius: 18rpx;
+  font-size: 28rpx;
+  font-weight: bold;
+  padding: 22rpx 0;
+  text-align: center;
   margin: 0;
-  line-height: 1.5;
 }
 
-/* 小组件 Widget 区域 */
-.widget-grid {
+.btn-action-half.secondary {
+  background: rgba(255, 255, 255, 0.08);
+  color: #22d3ee;
+  border: 1rpx solid rgba(6, 182, 212, 0.3);
+}
+
+.btn-action-half.primary {
+  background: linear-gradient(135deg, #06b6d4, #6366f1);
+  color: #ffffff;
+  box-shadow: 0 8rpx 20rpx rgba(6, 182, 212, 0.3);
+  border: none;
+}
+
+.btn-action-half:active {
+  opacity: 0.85;
+  transform: scale(0.98);
+}
+
+/* 并列两个小组件: 使用教程 & 常见问题 */
+.widget-grid-2 {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 16rpx;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 20rpx;
 }
 
-.widget-card {
+.widget-card-large {
   background: rgba(30, 41, 59, 0.75);
   backdrop-filter: blur(15px);
   border: 1rpx solid rgba(255, 255, 255, 0.08);
-  border-radius: 20rpx;
-  padding: 20rpx 12rpx;
+  border-radius: 24rpx;
+  padding: 30rpx 20rpx;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   text-align: center;
-  margin: 0;
   box-sizing: border-box;
 }
 
-.widget-card:active {
-  opacity: 0.8;
-  transform: scale(0.97);
+.widget-card-large:active {
+  opacity: 0.85;
+  transform: scale(0.98);
 }
 
-.widget-icon {
-  width: 72rpx;
-  height: 72rpx;
-  border-radius: 20rpx;
+.widget-icon-large {
+  width: 88rpx;
+  height: 88rpx;
+  border-radius: 24rpx;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 36rpx;
-  margin-bottom: 12rpx;
+  font-size: 44rpx;
+  margin-bottom: 16rpx;
 }
 
 .bg-cyan {
@@ -125,40 +142,24 @@
   border: 1rpx solid rgba(6, 182, 212, 0.3);
 }
 
-.bg-indigo {
-  background: rgba(99, 102, 241, 0.2);
-  border: 1rpx solid rgba(99, 102, 241, 0.3);
-}
-
 .bg-emerald {
   background: rgba(16, 185, 129, 0.2);
   border: 1rpx solid rgba(16, 185, 129, 0.3);
 }
 
-.widget-title {
-  font-size: 26rpx;
-  font-weight: 600;
+.widget-title-large {
+  font-size: 28rpx;
+  font-weight: bold;
   color: #ffffff;
-  margin-bottom: 4rpx;
+  margin-bottom: 6rpx;
 }
 
-.widget-sub {
-  font-size: 20rpx;
+.widget-desc-large {
+  font-size: 22rpx;
   color: #94a3b8;
 }
 
-.btn-reset {
-  padding: 20rpx 12rpx;
-  line-height: normal;
-  background: rgba(30, 41, 59, 0.75);
-  border-radius: 20rpx;
-  font-weight: normal;
-}
-.btn-reset::after {
-  border: none;
-}
-
-/* 结果区 */
+/* 解析结果区域 */
 .result-desc {
   background: rgba(15, 23, 42, 0.6);
   border: 1rpx solid rgba(255, 255, 255, 0.08);

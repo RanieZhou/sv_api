@@ -1,6 +1,6 @@
 <view class="container px-4 py-3">
 
-  <!-- 1. 轮播图区域 -->
+  <!-- 1. 轮播图 -->
   <view class="swiper-wrapper mb-3">
     <swiper class="banner-swiper" indicator-dots autoplay circular interval="4000" duration="500" indicator-color="rgba(255, 255, 255, 0.3)" indicator-active-color="#06b6d4">
       <swiper-item wx:for="{{banners}}" wx:key="index">
@@ -13,10 +13,10 @@
     </swiper>
   </view>
 
-  <!-- 2. 解析文本框卡片 -->
-  <view class="card">
-    <view class="flex items-center justify-between mb-3">
-      <view class="text-sm font-semibold text-white">粘贴视频/图集链接</view>
+  <!-- 2. 粘贴文本框卡片 -->
+  <view class="card mb-3">
+    <view class="flex items-center justify-between mb-2">
+      <view class="text-sm font-semibold text-white">粘贴文本框</view>
       <view class="badge">今日可用: {{remainingQuota}} 次</view>
     </view>
 
@@ -25,55 +25,38 @@
       class="input-textarea"
       value="{{inputUrl}}"
       bindinput="onInputChange"
-      placeholder="粘贴抖音、快手、小红书、B站等App复制的完整分享文字..."
+      placeholder="粘贴抖音、快手、小红书、B站等短视频或图集分享链接..."
       placeholder-class="placeholder-style"
       maxlength="500"
     ></textarea>
 
-    <!-- 操作工具按钮 -->
-    <view class="flex items-center justify-between mt-3 mb-4">
-      <button class="btn-tool" bindtap="pasteClipboard">
+    <!-- 两个主操作按钮: 一键粘贴 与 开始提取 -->
+    <view class="flex items-center gap-3 mt-3">
+      <button class="btn-action-half secondary" bindtap="pasteClipboard">
         <text>📋 一键粘贴</text>
       </button>
-      <button class="btn-tool" bindtap="clearInput">
-        <text>🗑️ 清空内容</text>
+      <button class="btn-action-half primary" bindtap="startParse" loading="{{loading}}">
+        <text>{{loading ? '提取中...' : '🚀 开始提取'}}</text>
       </button>
     </view>
-
-    <!-- 解析主按钮：开始提取 -->
-    <button class="btn-primary" bindtap="startParse" loading="{{loading}}">
-      {{loading ? '正在提取中...' : '开始提取'}}
-    </button>
   </view>
 
-  <!-- 3. 小组件区域 -->
-  <view class="widget-grid mb-3">
-    <view class="widget-card" bindtap="openTutorialModal">
-      <view class="widget-icon bg-cyan">📖</view>
-      <view class="widget-info">
-        <view class="widget-title">使用教程</view>
-        <view class="widget-sub">三步极速提取</view>
-      </view>
+  <!-- 3. 小组件区域: 使用教程 与 常见问题 (两栏并排) -->
+  <view class="widget-grid-2 mb-3">
+    <view class="widget-card-large" bindtap="openTutorialModal">
+      <view class="widget-icon-large bg-cyan">📖</view>
+      <view class="widget-title-large">使用教程</view>
+      <view class="widget-desc-large">三步快速上手去水印</view>
     </view>
 
-    <button class="widget-card btn-reset" open-type="share">
-      <view class="widget-icon bg-indigo">🎁</view>
-      <view class="widget-info">
-        <view class="widget-title">邀请好友</view>
-        <view class="widget-sub">分享助手给朋友</view>
-      </view>
-    </button>
-
-    <view class="widget-card" bindtap="openFaqModal">
-      <view class="widget-icon bg-emerald">💡</view>
-      <view class="widget-info">
-        <view class="widget-title">常见问题</view>
-        <view class="widget-sub">常见疑问解答</view>
-      </view>
+    <view class="widget-card-large" bindtap="openFaqModal">
+      <view class="widget-icon-large bg-emerald">💡</view>
+      <view class="widget-title-large">常见问题</view>
+      <view class="widget-desc-large">解答与故障处理指南</view>
     </view>
   </view>
 
-  <!-- 4. 解析结果展示区域 -->
+  <!-- 4. 解析结果展示 -->
   <view class="card result-card" wx:if="{{hasResult}}">
     <view class="text-sm font-semibold text-white mb-3 flex items-center justify-between">
       <text>🎉 解析结果</text>
@@ -93,7 +76,7 @@
         <video class="video-player" src="{{videoUrl}}" controls preload="metadata"></video>
       </view>
 
-      <view class="grid-actions mb-3">
+      <view class="flex flex-col gap-2 mb-3">
         <button class="btn-action primary mb-2" bindtap="saveVideo">
           <text>📥 保存无水印视频到相册</text>
         </button>
@@ -115,11 +98,6 @@
         <text>🖼️ 保存全部高清图集到相册</text>
       </button>
     </block>
-  </view>
-
-  <!-- 流量主 Banner 广告位 -->
-  <view class="my-3" wx:if="{{config.ad_banner_id}}">
-    <ad unit-id="{{config.ad_banner_id}}"></ad>
   </view>
 
 </view>

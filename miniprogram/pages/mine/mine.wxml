@@ -1,6 +1,6 @@
 <view class="container px-4 py-4">
 
-  <!-- 1. 用户信息头部卡片 -->
+  <!-- 1. 用户信息头部 (严格匹配草图布局) -->
   <view class="user-card flex items-center justify-between mb-4">
     <view class="flex items-center gap-3">
       <!-- 灰色默认头像 -->
@@ -12,7 +12,7 @@
         <view class="username text-base font-bold text-white mb-1">短视频聚合解析工具</view>
         <!-- 随机分配的 8 位字母数字 ID (用于标识/代替登录) -->
         <view class="userid-row flex items-center gap-1" bindtap="copyUserId">
-          <text class="userid-text">ID: {{userId}}</text>
+          <text class="userid-text">ID : {{userId}}</text>
           <text class="copy-btn-mini">复制</text>
         </view>
       </view>
@@ -20,28 +20,46 @@
     <view class="badge">今日已用 {{usedToday}} 次</view>
   </view>
 
-  <!-- 2. 功能菜单列表 -->
-  <view class="card p-0 overflow-hidden mb-4">
-    <!-- 联系客服 -->
-    <button class="list-item btn-reset flex items-center justify-between" open-type="contact">
+  <!-- 2. 菜单卡片列表 (草图四个核心独立按钮: 历史记录, 卡密兑换, 联系客服, 建议反馈) -->
+  <view class="menu-stack">
+    <!-- 历史记录 -->
+    <view class="menu-card" bindtap="openHistoryModal">
       <view class="flex items-center gap-3">
-        <view class="item-icon-box bg-cyan">💬</view>
-        <text class="text-sm text-white font-medium">联系客服</text>
+        <view class="item-icon-box bg-cyan">📜</view>
+        <text class="menu-card-title">历史记录</text>
+      </view>
+      <text class="arrow">▸</text>
+    </view>
+
+    <!-- 卡密兑换 -->
+    <view class="menu-card" bindtap="openRedeemModal">
+      <view class="flex items-center gap-3">
+        <view class="item-icon-box bg-emerald">🔑</view>
+        <text class="menu-card-title">卡密兑换</text>
+      </view>
+      <text class="arrow">▸</text>
+    </view>
+
+    <!-- 联系客服 -->
+    <button class="menu-card btn-reset" open-type="contact">
+      <view class="flex items-center gap-3">
+        <view class="item-icon-box bg-indigo">💬</view>
+        <text class="menu-card-title">联系客服</text>
       </view>
       <text class="arrow">▸</text>
     </button>
 
     <!-- 建议反馈 -->
-    <button class="list-item border-t btn-reset flex items-center justify-between" open-type="feedback">
+    <button class="menu-card btn-reset" open-type="feedback">
       <view class="flex items-center gap-3">
-        <view class="item-icon-box bg-indigo">📝</view>
-        <text class="text-sm text-white font-medium">建议反馈</text>
+        <view class="item-icon-box bg-purple">📝</view>
+        <text class="menu-card-title">建议反馈</text>
       </view>
       <text class="arrow">▸</text>
     </button>
   </view>
 
-  <!-- 3. 免责声明 -->
+  <!-- 免责声明 -->
   <view class="disclaimer-box text-center mt-6">
     <view class="text-xs text-slate-500 mb-1">免责声明</view>
     <view class="text-[20rpx] text-slate-600 leading-relaxed px-4">

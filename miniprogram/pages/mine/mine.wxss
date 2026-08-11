@@ -47,17 +47,37 @@
   margin-left: 8rpx;
 }
 
-/* 菜单项 */
-.list-item {
-  padding: 30rpx 28rpx;
-  margin: 0;
-  width: 100% !important;
+/* 4个独立堆叠的菜单卡片 (草图布局) */
+.menu-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 20rpx;
+}
+
+.menu-card {
+  background: rgba(30, 41, 59, 0.75);
+  backdrop-filter: blur(20px);
+  border: 1rpx solid rgba(255, 255, 255, 0.08);
+  border-radius: 20rpx;
+  padding: 28rpx 30rpx;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
   box-sizing: border-box;
+  width: 100% !important;
+  margin: 0;
   text-align: left;
 }
 
-.border-t {
-  border-top: 1rpx solid rgba(255, 255, 255, 0.06);
+.menu-card:active {
+  opacity: 0.85;
+  transform: scale(0.99);
+}
+
+.menu-card-title {
+  font-size: 30rpx;
+  font-weight: 500;
+  color: #ffffff;
 }
 
 .item-icon-box {
@@ -70,16 +90,34 @@
   font-size: 32rpx;
 }
 
+.bg-cyan {
+  background: rgba(6, 182, 212, 0.2);
+  border: 1rpx solid rgba(6, 182, 212, 0.3);
+}
+
+.bg-emerald {
+  background: rgba(16, 185, 129, 0.2);
+  border: 1rpx solid rgba(16, 185, 129, 0.3);
+}
+
+.bg-indigo {
+  background: rgba(99, 102, 241, 0.2);
+  border: 1rpx solid rgba(99, 102, 241, 0.3);
+}
+
+.bg-purple {
+  background: rgba(168, 85, 247, 0.2);
+  border: 1rpx solid rgba(168, 85, 247, 0.3);
+}
+
 .arrow {
   color: #64748b;
-  font-size: 28rpx;
+  font-size: 32rpx;
 }
 
 .btn-reset {
-  background: transparent;
-  border-radius: 0;
+  line-height: normal;
   font-weight: normal;
-  line-height: 1.5;
 }
 .btn-reset::after {
   border: none;

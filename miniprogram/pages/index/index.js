@@ -138,6 +138,14 @@ Page({
             imageList: imgs
           });
 
+          // 保存到历史记录
+          that.saveHistoryRecord({
+            title: d.title || d.desc || '短视频解析作品',
+            author: d.author?.name || '未知作者',
+            videoUrl: video,
+            time: new Date().toLocaleString()
+          });
+
           // 扣减本地免费额度
           app.globalData.usedToday += 1;
           wx.setStorageSync('used_today', app.globalData.usedToday);
@@ -159,6 +167,14 @@ Page({
         wx.showToast({ title: '网络连接失败', icon: 'error' });
       }
     });
+  },
+
+  // 写入历史记录缓存
+  saveHistoryRecord(record) {
+    let history = wx.getStorageSync('parse_history') || [];
+    history.unshift(record);
+    if (history.length > 30) history = history.slice(0, 30);
+    wx.setStorageSync('parse_history', history);
   },
 
   // 打开使用教程弹窗
@@ -294,7 +310,7 @@ Page({
 
   onShareAppMessage() {
     return {
-      title: '极速短视频无水印解析与高清图集下载工具',
+      title: '短视频聚合解析工具 - 极速无水印提取',
       path: '/pages/index/index'
     };
   }

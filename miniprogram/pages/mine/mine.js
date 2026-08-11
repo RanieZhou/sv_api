@@ -42,9 +42,59 @@ Page({
     });
   },
 
+  // 查看历史记录 (匹配草图按钮)
+  openHistoryModal() {
+    const history = wx.getStorageSync('parse_history') || [];
+    if (history.length === 0) {
+      wx.showModal({
+        title: '📜 解析历史记录',
+        content: '暂无历史解析记录，快去首页粘贴链接提取吧！',
+        showCancel: false,
+        confirmText: '我知道了'
+      });
+      return;
+    }
+
+    const latestList = history.slice(0, 5).map((item, index) => `${index + 1}. ${item.title}\n(${item.time})`).join('\n\n');
+
+    wx.showModal({
+      title: '📜 最近解析历史',
+      content: `${latestList}\n\n[提示: 点击确定可清空历史记录]`,
+      confirmText: '清空历史',
+      cancelText: '关闭',
+      success(res) {
+        if (res.confirm) {
+          wx.removeStorageSync('parse_history');
+          wx.showToast({ title: '历史记录已清空', icon: 'success' });
+        }
+      }
+    });
+  },
+
+  // 卡密兑换 (匹配草图按钮)
+  openRedeemModal() {
+    const cfg = this.data.config;
+    wx.showModal({
+      title: '🔑 卡密兑换 / 绑定',
+      content: `可用兑换码或订阅专属无限额度 API Key。\n当前绑定Key: ${cfg.api_key ? cfg.api_key.slice(0, 12) + '...' : '内置测试Key'}\n订阅/兑换网址：${cfg.subscribe_url || 'https://shortvideo.aihubzone.cn/'}`,
+      confirmText: '复制订阅网址',
+      cancelText: '取消',
+      success(res) {
+        if (res.confirm) {
+          wx.setClipboardData({
+            data: cfg.subscribe_url || 'https://shortvideo.aihubzone.cn/',
+            success() {
+              wx.showToast({ title: '订阅网址已复制', icon: 'success' });
+            }
+          });
+        }
+      }
+    });
+  },
+
   onShareAppMessage() {
     return {
-      title: '短视频聚合解析工具 - 极速无水印提取助手',
+      title: '短视频聚合解析工具 - 极速无水印提取',
       path: '/pages/index/index'
     };
   }
