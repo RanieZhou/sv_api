@@ -1,13 +1,13 @@
 {
   "pages": [
     "pages/index/index",
-    "pages/help/help",
-    "pages/mine/mine"
+    "pages/mine/mine",
+    "pages/help/help"
   ],
   "window": {
     "backgroundTextStyle": "light",
     "navigationBarBackgroundColor": "#0f172a",
-    "navigationBarTitleText": "极速去水印助手",
+    "navigationBarTitleText": "短视频聚合解析工具",
     "navigationBarTextStyle": "white",
     "backgroundColor": "#0f172a"
   },
@@ -19,15 +19,11 @@
     "list": [
       {
         "pagePath": "pages/index/index",
-        "text": "一键解析"
-      },
-      {
-        "pagePath": "pages/help/help",
-        "text": "使用教程"
+        "text": "首页"
       },
       {
         "pagePath": "pages/mine/mine",
-        "text": "个人中心"
+        "text": "我的"
       }
     ]
   },

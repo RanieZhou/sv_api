@@ -9,7 +9,27 @@ Page({
     resultData: null,
     videoUrl: '',
     imageList: [],
-    remainingQuota: 5
+    remainingQuota: 5,
+    banners: [
+      {
+        badge: '✨ 全网强力解析',
+        title: '短视频/图集 无水印提取',
+        desc: '支持抖音、快手、小红书、B站等多平台链接解析',
+        bgClass: 'bg-gradient-1'
+      },
+      {
+        badge: '🖼️ 高清无损',
+        title: '高清图集 一键导出相册',
+        desc: '原图画质一键保存，手机壁纸画报轻松获取',
+        bgClass: 'bg-gradient-2'
+      },
+      {
+        badge: '⚡ 智能识别',
+        title: '自动识别 剪贴板一键提取',
+        desc: '直接粘贴App复制的完整分享文本即可自动解析',
+        bgClass: 'bg-gradient-3'
+      }
+    ]
   },
 
   onShow() {
@@ -24,19 +44,18 @@ Page({
     this.setData({ inputUrl: e.detail.value });
   },
 
-  // 检查剪贴板
+  // 自动检测剪贴板
   checkClipboardData() {
     const that = this;
     wx.getClipboardData({
       success(res) {
         const text = res.data || '';
         if (text && (text.includes('http://') || text.includes('https://'))) {
-          // 如果与当前输入框内容不同，则提示一键粘贴
           if (text !== that.data.inputUrl) {
             wx.showModal({
               title: '检测到复制链接',
-              content: '是否直接识别并粘贴剪贴板中的链接？',
-              confirmText: '粘贴解析',
+              content: '是否直接粘贴并开始提取？',
+              confirmText: '粘贴并提取',
               cancelText: '取消',
               success(modalRes) {
                 if (modalRes.confirm) {
@@ -69,7 +88,7 @@ Page({
     this.setData({ inputUrl: '', hasResult: false, resultData: null, videoUrl: '', imageList: [] });
   },
 
-  // 发起解析
+  // 发起解析 (开始提取)
   startParse() {
     const that = this;
     const urlText = this.data.inputUrl.trim();
@@ -78,7 +97,6 @@ Page({
       return;
     }
 
-    // 检查额度
     if (this.data.remainingQuota <= 0) {
       wx.showModal({
         title: '今日解析额度已用完',
@@ -127,11 +145,11 @@ Page({
             remainingQuota: Math.max(0, cfg.daily_free_quota - app.globalData.usedToday)
           });
 
-          wx.showToast({ title: '解析成功', icon: 'success' });
+          wx.showToast({ title: '提取成功', icon: 'success' });
         } else {
           wx.showModal({
-            title: '解析失败',
-            content: (res.data && res.data.msg) || '上游接口未能成功提取视频，请检查链接',
+            title: '提取失败',
+            content: (res.data && res.data.msg) || '未能成功提取无水印资源，请检查链接是否正确',
             showCancel: false
           });
         }
@@ -143,7 +161,27 @@ Page({
     });
   },
 
-  // 保存视频到本地相册
+  // 打开使用教程弹窗
+  openTutorialModal() {
+    wx.showModal({
+      title: '📖 使用教程',
+      content: '1️⃣ 打开抖音、快手、小红书等 App\n2️⃣ 点击【分享】按钮，选择【复制链接】\n3️⃣ 打开本小程序，点击【一键粘贴】，再点击【开始提取】即可无水印下载视频或保存高清图集到相册！',
+      showCancel: false,
+      confirmText: '我知道了'
+    });
+  },
+
+  // 打开常见问题弹窗
+  openFaqModal() {
+    wx.showModal({
+      title: '💡 常见问题解答',
+      content: 'Q1: 保存视频到相册提示失败？\nA: 请在手机设置中检查是否已允许微信访问系统相册权限。\n\nQ2: 提示链接解析失败？\nA: 请确认复制的是作品分享链接，勿包含非相关字符或私密作品链接。\n\nQ3: 是否收费？\nA: 本工具提供每日免费解析额度，无需登录开箱即用。',
+      showCancel: false,
+      confirmText: '关闭'
+    });
+  },
+
+  // 保存视频到相册
   saveVideo() {
     const videoUrl = this.data.videoUrl;
     if (!videoUrl) return;
@@ -177,6 +215,44 @@ Page({
     });
   },
 
+  // 批量保存图集
+  saveAllImages() {
+    const images = this.data.imageList;
+    if (!images || images.length === 0) return;
+
+    wx.showLoading({ title: `保存中 (0/${images.length})...`, mask: true });
+
+    let count = 0;
+    images.forEach((imgUrl, idx) => {
+      wx.downloadFile({
+        url: imgUrl,
+        success(res) {
+          if (res.statusCode === 200) {
+            wx.saveImageToPhotosAlbum({
+              filePath: res.tempFilePath,
+              success() {
+                count++;
+                wx.showLoading({ title: `保存中 (${count}/${images.length})...`, mask: true });
+                if (count === images.length) {
+                  wx.hideLoading();
+                  wx.showToast({ title: '全部图集已保存到相册', icon: 'success' });
+                }
+              },
+              fail() {
+                count++;
+                if (count === images.length) wx.hideLoading();
+              }
+            });
+          }
+        },
+        fail() {
+          count++;
+          if (count === images.length) wx.hideLoading();
+        }
+      });
+    });
+  },
+
   // 复制直链
   copyLink() {
     wx.setClipboardData({
@@ -196,14 +272,13 @@ Page({
     });
   },
 
-  // 激励广告解封额度
+  // 激励广告增加额度
   showAdReward() {
     const adVideoId = app.globalData.config.ad_video_id;
     if (!adVideoId) {
       wx.showToast({ title: '广告加载中，请稍后再试', icon: 'none' });
       return;
     }
-    // 微信小程序广告代码逻辑
     if (wx.createRewardedVideoAd) {
       const rewardAd = wx.createRewardedVideoAd({ adUnitId: adVideoId });
       rewardAd.onClose(res => {
@@ -215,5 +290,12 @@ Page({
       });
       rewardAd.show().catch(() => rewardAd.load().then(() => rewardAd.show()));
     }
+  },
+
+  onShareAppMessage() {
+    return {
+      title: '极速短视频无水印解析与高清图集下载工具',
+      path: '/pages/index/index'
+    };
   }
 });

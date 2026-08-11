@@ -3,39 +3,48 @@ const app = getApp();
 Page({
   data: {
     config: {},
-    usedToday: 0
+    usedToday: 0,
+    userId: ''
   },
 
   onShow() {
+    let uid = wx.getStorageSync('user_id');
+    if (!uid || uid.length !== 8) {
+      if (app && app.initUserId) {
+        app.initUserId();
+        uid = app.globalData.userId;
+      } else {
+        const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+        uid = '';
+        for (let i = 0; i < 8; i++) {
+          uid += chars.charAt(Math.floor(Math.random() * chars.length));
+        }
+        wx.setStorageSync('user_id', uid);
+      }
+    }
+
     this.setData({
-      config: app.globalData.config,
-      usedToday: app.globalData.usedToday || 0
+      config: app.globalData.config || {},
+      usedToday: app.globalData.usedToday || 0,
+      userId: uid
     });
   },
 
-  openSubscribeModal() {
-    const cfg = this.data.config;
-    wx.showModal({
-      title: '订阅 / 购买专属 API Key',
-      content: `可在以下网站订阅无限额度 Key 或联系管理员微信号：${cfg.contact_wechat || 'admin'}\n订阅链接：${cfg.subscribe_url || 'https://shortvideo.aihubzone.cn/'}`,
-      confirmText: '复制链接',
-      cancelText: '关闭',
-      success(res) {
-        if (res.confirm) {
-          wx.setClipboardData({
-            data: cfg.subscribe_url || 'https://shortvideo.aihubzone.cn/',
-            success() {
-              wx.showToast({ title: '订阅链接已复制', icon: 'success' });
-            }
-          });
-        }
+  // 复制用户 8 位 ID
+  copyUserId() {
+    const uid = this.data.userId;
+    if (!uid) return;
+    wx.setClipboardData({
+      data: uid,
+      success() {
+        wx.showToast({ title: '用户ID已复制', icon: 'success' });
       }
     });
   },
 
   onShareAppMessage() {
     return {
-      title: this.data.config.mp_title || '免费短视频去水印/图集下载助手',
+      title: '短视频聚合解析工具 - 极速无水印提取助手',
       path: '/pages/index/index'
     };
   }

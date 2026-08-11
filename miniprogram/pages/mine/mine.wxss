@@ -1,44 +1,86 @@
 /* mine.wxss */
-.avatar-box {
-  width: 90rpx;
-  height: 90rpx;
-  background: linear-gradient(135deg, #06b6d4, #6366f1);
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-.avatar-icon {
-  font-size: 40rpx;
+.user-card {
+  background: rgba(30, 41, 59, 0.75);
+  backdrop-filter: blur(20px);
+  border: 1rpx solid rgba(255, 255, 255, 0.08);
+  border-radius: 24rpx;
+  padding: 36rpx 30rpx;
 }
 
-.list-item {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 30rpx 30rpx;
-  background: transparent;
+/* 灰色默认头像 */
+.default-avatar {
+  width: 100rpx;
+  height: 100rpx;
+  border-radius: 50%;
+  background: #334155;
+  border: 2rpx solid rgba(255, 255, 255, 0.15);
+  box-shadow: 0 4rpx 16rpx rgba(0, 0, 0, 0.2);
 }
-.list-item.border-t {
+
+.avatar-icon {
+  font-size: 52rpx;
+  color: #94a3b8;
+}
+
+.username {
+  font-size: 32rpx;
+  letter-spacing: 0.5rpx;
+}
+
+.userid-row {
+  background: rgba(15, 23, 42, 0.6);
+  border: 1rpx solid rgba(255, 255, 255, 0.08);
+  border-radius: 10rpx;
+  padding: 4rpx 14rpx;
+  display: inline-flex;
+}
+
+.userid-text {
+  font-size: 22rpx;
+  color: #38bdf8;
+  font-family: monospace;
+}
+
+.copy-btn-mini {
+  font-size: 20rpx;
+  color: #94a3b8;
+  margin-left: 8rpx;
+}
+
+/* 菜单项 */
+.list-item {
+  padding: 30rpx 28rpx;
+  margin: 0;
+  width: 100% !important;
+  box-sizing: border-box;
+  text-align: left;
+}
+
+.border-t {
   border-top: 1rpx solid rgba(255, 255, 255, 0.06);
 }
 
-.btn-reset {
-  margin: 0 !important;
-  width: 100% !important;
-  font-weight: normal;
-  text-align: left;
-  border-radius: 0;
-}
-
-.item-icon {
+.item-icon-box {
+  width: 64rpx;
+  height: 64rpx;
+  border-radius: 16rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   font-size: 32rpx;
 }
+
 .arrow {
   color: #64748b;
   font-size: 28rpx;
 }
 
-.disclaimer-box {
-  margin-top: 60rpx;
+.btn-reset {
+  background: transparent;
+  border-radius: 0;
+  font-weight: normal;
+  line-height: 1.5;
+}
+.btn-reset::after {
+  border: none;
 }

@@ -20,8 +20,23 @@ App({
   },
 
   onLaunch() {
+    this.initUserId();
     this.loadRemoteConfig();
     this.checkDailyQuota();
+  },
+
+  // 初始化分配 8 位随机大小写字母与数字组合的用户 ID
+  initUserId() {
+    let userId = wx.getStorageSync('user_id');
+    if (!userId || userId.length !== 8) {
+      const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+      userId = '';
+      for (let i = 0; i < 8; i++) {
+        userId += chars.charAt(Math.floor(Math.random() * chars.length));
+      }
+      wx.setStorageSync('user_id', userId);
+    }
+    this.globalData.userId = userId;
   },
 
   // 动态从小程序后台拉取配置（标题、广告ID、API Key、订阅链接等）
