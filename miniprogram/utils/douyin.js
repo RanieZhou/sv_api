@@ -1,6 +1,9 @@
 /**
  * 短视频去水印解析工具
  * 对应服务端：https://shortvideo.aihubzone.cn
+ *
+ * 注意：抖音视频直链含防盗链签名，小程序不能直接播放。
+ * 必须通过 /api/proxy?url=<encodeURIComponent(原链)> 服务端中转才能正常加载。
  */
 
 const { getApiUrl } = require('../config/env.js');
@@ -107,7 +110,8 @@ function parseDouyinVideo(shareContent, apiKey = DEFAULT_API_KEY) {
               author: authorName,
               videoUrl: videoUrl,
               cover: d.cover || '',
-              proxyVideoUrl: videoUrl,
+              // 通过服务器代理中转，解决小程序播放防盗链黑屏问题
+              proxyVideoUrl: getProxyVideoUrl(videoUrl),
               images: imgs,
               duration: d.duration ? Math.round(d.duration / 1000) : 0,
               size: d.size || 0
@@ -136,10 +140,13 @@ function parseDouyinVideo(shareContent, apiKey = DEFAULT_API_KEY) {
 }
 
 /**
- * 获取代理视频URL
+ * 获取代理视频URL（必须使用！）
+ * 将抖音原始直链通过我们自己的服务器中转，绕过防盗链限制。
+ * 小程序 <video> 组件无法直接加载带防盗链的抖音 CDN 直链，必须走此代理。
  */
 function getProxyVideoUrl(originalUrl) {
-  return originalUrl || '';
+  if (!originalUrl) return '';
+  return `https://shortvideo.aihubzone.cn/api/proxy?url=${encodeURIComponent(originalUrl)}`;
 }
 
 /**

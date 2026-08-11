@@ -6,6 +6,7 @@ import { config } from './config.js';
 
 import parseRoutes from './routes/parse.js';
 import adminRoutes from './routes/admin.js';
+import proxyRoutes from './routes/proxy.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -22,6 +23,7 @@ app.use(express.static(path.join(__dirname, '../public')));
 
 // 3. 挂载路由
 app.use('/api', parseRoutes);
+app.use('/api', proxyRoutes);
 app.use('/api/admin', adminRoutes);
 
 // 4. 健康检查
