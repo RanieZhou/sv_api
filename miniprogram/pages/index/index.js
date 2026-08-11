@@ -1,311 +1,601 @@
-const app = getApp();
+const app = getApp()
+const { parseDouyinVideo, downloadVideoWithProxy, getProxyVideoUrl, extractDouyinUrl, debounce, testApiConnection, handleApiError } = require('../../utils/douyin.js')
+const { getApiUrl, getServerUrl } = require('../../config/env.js')
 
 Page({
   data: {
-    config: {},
-    inputUrl: '',
-    loading: false,
-    hasResult: false,
-    resultData: null,
-    videoUrl: '',
-    imageList: [],
-    remainingQuota: 5,
-    banners: [
-      {
-        badge: '✨ 全网强力解析',
-        title: '短视频/图集 无水印提取',
-        desc: '支持抖音、快手、小红书、B站等多平台链接解析',
-        bgClass: 'bg-gradient-1'
-      },
-      {
-        badge: '🖼️ 高清无损',
-        title: '高清图集 一键导出相册',
-        desc: '原图画质一键保存，手机壁纸画报轻松获取',
-        bgClass: 'bg-gradient-2'
-      },
-      {
-        badge: '⚡ 智能识别',
-        title: '自动识别 剪贴板一键提取',
-        desc: '直接粘贴App复制的完整分享文本即可自动解析',
-        bgClass: 'bg-gradient-3'
-      }
-    ]
+    banners: [], // 轮播图列表
+    showBanners: false, // 是否显示轮播图区域
+    inputUrl: '', // 输入的链接
+    isLoading: false, // 是否正在加载
+    parseResult: null, // 解析结果
+    canParse: false, // 是否可以解析
+    // 下载进度相关
+    isDownloading: false, // 是否正在下载
+    downloadProgress: 0, // 下载进度 0-100
+    downloadStage: '', // 下载阶段: downloading, saving, completed, failed
+    downloadStageText: '', // 下载阶段文本
+    videoAd: null, // 激励广告实例
+  },
+
+  onLoad() {
+    this.loadBanners()
+    // 初始化激励广告
+    this.initRewardedVideoAd()
   },
 
   onShow() {
-    this.setData({
-      config: app.globalData.config,
-      remainingQuota: Math.max(0, app.globalData.config.daily_free_quota - app.globalData.usedToday)
-    });
-    this.checkClipboardData();
+    // 每次显示页面时检查剪贴板
+    this.checkClipboard()
   },
 
-  onInputChange(e) {
-    this.setData({ inputUrl: e.detail.value });
-  },
-
-  // 自动检测剪贴板
-  checkClipboardData() {
-    const that = this;
-    wx.getClipboardData({
-      success(res) {
-        const text = res.data || '';
-        if (text && (text.includes('http://') || text.includes('https://'))) {
-          if (text !== that.data.inputUrl) {
-            wx.showModal({
-              title: '检测到复制链接',
-              content: '是否直接粘贴并开始提取？',
-              confirmText: '粘贴并提取',
-              cancelText: '取消',
-              success(modalRes) {
-                if (modalRes.confirm) {
-                  that.setData({ inputUrl: text });
-                  that.startParse();
-                }
-              }
-            });
-          }
-        }
-      }
-    });
-  },
-
-  pasteClipboard() {
-    const that = this;
-    wx.getClipboardData({
-      success(res) {
-        if (res.data) {
-          that.setData({ inputUrl: res.data });
-          wx.showToast({ title: '已粘贴', icon: 'success' });
-        } else {
-          wx.showToast({ title: '剪贴板为空', icon: 'none' });
-        }
-      }
-    });
-  },
-
-  clearInput() {
-    this.setData({ inputUrl: '', hasResult: false, resultData: null, videoUrl: '', imageList: [] });
-  },
-
-  // 发起解析 (开始提取)
-  startParse() {
-    const that = this;
-    const urlText = this.data.inputUrl.trim();
-    if (!urlText) {
-      wx.showToast({ title: '请先输入或粘贴链接', icon: 'none' });
-      return;
-    }
-
-    if (this.data.remainingQuota <= 0) {
-      wx.showModal({
-        title: '今日解析额度已用完',
-        content: '观看一次短视频广告可免费增加解析额度！',
-        confirmText: '看广告解锁',
-        cancelText: '取消',
-        success(res) {
-          if (res.confirm) {
-            that.showAdReward();
-          }
-        }
-      });
-      return;
-    }
-
-    const cfg = app.globalData.config;
-    const targetApi = `${cfg.parse_api_url}?url=${encodeURIComponent(urlText)}&api_key=${encodeURIComponent(cfg.api_key)}`;
-
-    this.setData({ loading: true });
-
-    wx.request({
-      url: targetApi,
-      method: 'GET',
-      success(res) {
-        that.setData({ loading: false });
-        if (res.statusCode === 200 && res.data && (res.data.code === 200 || res.data.code === 0)) {
-          const d = res.data.data || res.data;
-          const video = d.video_url || d.url || d.play_url || (d.video_urls && d.video_urls[0]) || '';
+  // 加载轮播图 - 从后端API获取真实数据
+  async loadBanners() {
+    try {
+      wx.request({
+        url: getApiUrl('/banners'),
+        method: 'GET',
+        header: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json'
+        },
+        timeout: 10000,
+        success: (res) => {
+          console.log('轮播图API响应:', res);
           
-          let imgs = [];
-          if (d.images && d.images.length > 0) {
-            imgs = d.images.map(img => typeof img === 'string' ? img : (img.url || img.url_list?.[0] || ''));
-          }
-
-          that.setData({
-            hasResult: true,
-            resultData: d,
-            videoUrl: video,
-            imageList: imgs
-          });
-
-          // 保存到历史记录
-          that.saveHistoryRecord({
-            title: d.title || d.desc || '短视频解析作品',
-            author: d.author?.name || '未知作者',
-            videoUrl: video,
-            time: new Date().toLocaleString()
-          });
-
-          // 扣减本地免费额度
-          app.globalData.usedToday += 1;
-          wx.setStorageSync('used_today', app.globalData.usedToday);
-          that.setData({
-            remainingQuota: Math.max(0, cfg.daily_free_quota - app.globalData.usedToday)
-          });
-
-          wx.showToast({ title: '提取成功', icon: 'success' });
-        } else {
-          wx.showModal({
-            title: '提取失败',
-            content: (res.data && res.data.msg) || '未能成功提取无水印资源，请检查链接是否正确',
-            showCancel: false
-          });
-        }
-      },
-      fail() {
-        that.setData({ loading: false });
-        wx.showToast({ title: '网络连接失败', icon: 'error' });
-      }
-    });
-  },
-
-  // 写入历史记录缓存
-  saveHistoryRecord(record) {
-    let history = wx.getStorageSync('parse_history') || [];
-    history.unshift(record);
-    if (history.length > 30) history = history.slice(0, 30);
-    wx.setStorageSync('parse_history', history);
-  },
-
-  // 跳转到使用教程新页面 (不弹窗)
-  openTutorialPage() {
-    wx.navigateTo({
-      url: '/pages/help/help'
-    });
-  },
-
-  // 跳转到常见问题新页面 (不弹窗)
-  openFaqPage() {
-    wx.navigateTo({
-      url: '/pages/faq/faq'
-    });
-  },
-
-  // 保存视频到相册
-  saveVideo() {
-    const videoUrl = this.data.videoUrl;
-    if (!videoUrl) return;
-
-    wx.showLoading({ title: '正在下载视频...', mask: true });
-
-    wx.downloadFile({
-      url: videoUrl,
-      success(res) {
-        if (res.statusCode === 200) {
-          wx.saveVideoToPhotosAlbum({
-            filePath: res.tempFilePath,
-            success() {
-              wx.hideLoading();
-              wx.showToast({ title: '已保存至手机相册', icon: 'success' });
-            },
-            fail() {
-              wx.hideLoading();
-              wx.showToast({ title: '保存失败/未开启权限', icon: 'none' });
-            }
-          });
-        } else {
-          wx.hideLoading();
-          wx.showToast({ title: '下载文件失败', icon: 'none' });
-        }
-      },
-      fail() {
-        wx.hideLoading();
-        wx.showToast({ title: '网络下载失败', icon: 'none' });
-      }
-    });
-  },
-
-  // 批量保存图集
-  saveAllImages() {
-    const images = this.data.imageList;
-    if (!images || images.length === 0) return;
-
-    wx.showLoading({ title: `保存中 (0/${images.length})...`, mask: true });
-
-    let count = 0;
-    images.forEach((imgUrl, idx) => {
-      wx.downloadFile({
-        url: imgUrl,
-        success(res) {
-          if (res.statusCode === 200) {
-            wx.saveImageToPhotosAlbum({
-              filePath: res.tempFilePath,
-              success() {
-                count++;
-                wx.showLoading({ title: `保存中 (${count}/${images.length})...`, mask: true });
-                if (count === images.length) {
-                  wx.hideLoading();
-                  wx.showToast({ title: '全部图集已保存到相册', icon: 'success' });
-                }
-              },
-              fail() {
-                count++;
-                if (count === images.length) wx.hideLoading();
-              }
+          if (res.statusCode === 200 && res.data && res.data.success) {
+            const banners = res.data.data || [];
+            
+            // 处理图片URL，如果是本地路径则添加服务器前缀
+            const processedBanners = banners.map(banner => ({
+              ...banner,
+              imageUrl: banner.imageUrl.startsWith('/uploads') ? 
+                getServerUrl(banner.imageUrl) : 
+                banner.imageUrl
+            }));
+            
+            this.setData({
+              banners: processedBanners,
+              showBanners: processedBanners.length > 0
             });
+            
+            console.log('✅ 轮播图加载成功，共', processedBanners.length, '张');
+          } else {
+            console.log('⚠️ 轮播图API返回异常:', res.data);
+            this.useFallbackBanners();
           }
         },
-        fail() {
-          count++;
-          if (count === images.length) wx.hideLoading();
+        fail: (err) => {
+          console.error('❌ 轮播图API请求失败:', err);
+          this.useFallbackBanners();
         }
       });
+    } catch (error) {
+      console.error('加载轮播图异常:', error);
+      this.useFallbackBanners();
+    }
+  },
+
+  // 备用轮播图数据（当API不可用时）
+  useFallbackBanners() {
+    console.log('📋 使用备用轮播图数据');
+    const fallbackBanners = [
+      {
+        id: 1,
+        title: '欢迎使用去水印工具',
+        imageUrl: 'https://picsum.photos/750/300?random=1',
+        linkUrl: '',
+        isActive: true,
+        sortOrder: 1
+      },
+      {
+        id: 2,
+        title: '支持多平台视频解析',
+        imageUrl: 'https://picsum.photos/750/300?random=2', 
+        linkUrl: '',
+        isActive: true,
+        sortOrder: 2
+      }
+    ];
+    
+    this.setData({
+      banners: fallbackBanners,
+      showBanners: true
     });
   },
 
-  // 复制直链
-  copyLink() {
-    wx.setClipboardData({
-      data: this.data.videoUrl,
-      success() {
-        wx.showToast({ title: '链接已复制', icon: 'success' });
+  // 初始化激励广告
+  initRewardedVideoAd() {
+    if (wx.createRewardedVideoAd) {
+      this.videoAd = wx.createRewardedVideoAd({
+        adUnitId: 'adunit-70281f12832763f1'
+      })
+      
+      this.videoAd.onLoad(() => {
+        console.log('激励广告加载成功')
+      })
+      
+      this.videoAd.onError((err) => {
+        console.error('激励广告加载失败', err)
+        // 广告加载失败时，直接允许下载
+        app.updateAdWatchStatus(true)
+      })
+      
+      this.videoAd.onClose((res) => {
+        if (res && res.isEnded) {
+          // 正常播放结束，更新广告观看状态
+          app.updateAdWatchStatus(true)
+          // 继续执行保存操作
+          this.proceedWithDownload()
+        } else {
+          // 播放中途退出，不更新状态
+          wx.showToast({
+            title: '需要观看完整广告才能保存视频',
+            icon: 'none',
+            duration: 2000
+          })
+        }
+      })
+    }
+  },
+
+  // 显示激励广告
+  showRewardedVideoAd() {
+    if (!this.videoAd) {
+      console.log('激励广告未初始化')
+      // 广告组件未初始化，直接允许下载
+      app.updateAdWatchStatus(true)
+      this.proceedWithDownload()
+      return
+    }
+
+    this.videoAd.show().catch(() => {
+      // 失败重试
+      this.videoAd.load()
+        .then(() => this.videoAd.show())
+        .catch(err => {
+          console.error('激励广告显示失败', err)
+          // 广告显示失败，直接允许下载
+          app.updateAdWatchStatus(true)
+          this.proceedWithDownload()
+        })
+    })
+  },
+
+  // 从文本中提取抖音视频链接
+  extractVideoUrl(text) {
+    if (!text || typeof text !== 'string') return ''
+    
+    try {
+      // 优先使用抖音专用提取函数
+      return extractDouyinUrl(text)
+    } catch (error) {
+      console.log('抖音链接提取失败:', error.message)
+      return ''
+    }
+  },
+
+  // 检查剪贴板内容
+  checkClipboard() {
+    wx.getClipboardData({
+      success: (res) => {
+        const clipData = res.data
+        
+        // 从剪贴板内容中提取视频链接
+        const extractedUrl = this.extractVideoUrl(clipData)
+        
+        if (extractedUrl && extractedUrl !== this.data.inputUrl) {
+          // 如果提取到的链接与原始内容不同，说明是从复杂文本中提取的
+          const isExtracted = extractedUrl !== clipData.trim()
+          
+          wx.showModal({
+            title: '发现视频链接',
+            content: isExtracted ? 
+              `检测到视频链接：${extractedUrl.length > 50 ? extractedUrl.substring(0, 50) + '...' : extractedUrl}` : 
+              '是否使用剪贴板中的视频链接？',
+            confirmText: '使用',
+            cancelText: '取消',
+            success: (modalRes) => {
+              if (modalRes.confirm) {
+                this.setData({
+                  inputUrl: extractedUrl
+                })
+                this.checkCanParse()
+                
+                if (isExtracted) {
+                  wx.showToast({ title: '已自动提取视频链接', icon: 'success' })
+                }
+              }
+            }
+          })
+        }
+      },
+      fail: () => {
+        // 获取剪贴板失败，忽略
+      }
+    })
+  },
+
+  // 判断是否为有效网络链接
+  isVideoUrl(url) {
+    if (!url || typeof url !== 'string') return false;
+    const clean = url.trim();
+    return clean.startsWith('http://') || clean.startsWith('https://');
+  },
+
+  // 轮播图点击事件
+  onBannerTap(e) {
+    const url = e.currentTarget.dataset.url
+    if (url) {
+      console.log('轮播图跳转:', url)
+    }
+  },
+
+  // 输入链接：自动提取纯 URL 并显示在文本框中
+  onUrlInput(e) {
+    const inputValue = e.detail.value;
+    const extractedUrl = this.extractVideoUrl(inputValue);
+    const finalUrl = extractedUrl || inputValue;
+    
+    this.setData({
+      inputUrl: finalUrl,
+      parseResult: null
+    });
+    
+    if (extractedUrl && extractedUrl !== inputValue.trim()) {
+      wx.showToast({ title: '已自动提取链接', icon: 'success' });
+    }
+    
+    this.checkCanParse();
+  },
+
+  // 粘贴链接：自动提取纯 URL 并显示在文本框中
+  pasteUrl() {
+    wx.getClipboardData({
+      success: (res) => {
+        const clipData = res.data || '';
+        const extractedUrl = this.extractVideoUrl(clipData);
+        const finalUrl = extractedUrl || clipData;
+        
+        this.setData({
+          inputUrl: finalUrl,
+          parseResult: null
+        });
+        
+        this.checkCanParse();
+        
+        if (extractedUrl && extractedUrl !== clipData.trim()) {
+          wx.showToast({ title: '已自动提取链接', icon: 'success' });
+        } else if (finalUrl) {
+          wx.showToast({ title: '已粘贴链接' });
+        }
+      },
+      fail: () => {
+        wx.showToast({ title: '粘贴失败', icon: 'none' });
       }
     });
   },
 
-  // 预览大图
-  previewImage(e) {
-    const src = e.currentTarget.dataset.src;
-    wx.previewImage({
-      current: src,
-      urls: this.data.imageList
+  // 清空链接
+  clearUrl() {
+    this.setData({
+      inputUrl: '',
+      parseResult: null
     });
+    this.checkCanParse();
   },
 
-  // 激励广告增加额度
-  showAdReward() {
-    const adVideoId = app.globalData.config.ad_video_id;
-    if (!adVideoId) {
-      wx.showToast({ title: '广告加载中，请稍后再试', icon: 'none' });
-      return;
+  // 检查是否可以解析
+  checkCanParse() {
+    const inputUrl = (this.data.inputUrl || '').trim();
+    const canParse = inputUrl.length > 0 && this.isVideoUrl(inputUrl);
+    this.setData({ canParse });
+  },
+
+  // 解析抖音视频
+  async parseVideo() {
+    if (!this.data.canParse || this.data.isLoading) return
+
+    const { inputUrl } = this.data
+    
+    this.setData({ isLoading: true })
+    wx.showLoading({
+      title: '正在解析视频...',
+      mask: true
+    })
+
+    try {
+      console.log('开始解析抖音视频:', inputUrl)
+      
+      // 使用符合接口文档规范的解析工具
+      const videoData = await parseDouyinVideo(inputUrl)
+      
+      console.log('解析成功，视频数据:', videoData)
+
+      // 按照接口文档的标准字段格式化数据
+      const formattedData = {
+        success: true,
+        title: videoData.title || '抖音视频',
+        author: videoData.author || '未知作者',
+        videoUrl: videoData.videoUrl || '',
+        cover: videoData.cover || '',
+        proxyVideoUrl: videoData.proxyVideoUrl, // 重要：必须使用代理URL
+        duration: videoData.duration || 0,
+        size: videoData.size || 0,
+        originalUrl: inputUrl
+      }
+      
+      this.setData({
+        parseResult: formattedData
+      })
+      
+      wx.hideLoading()
+      wx.showToast({
+        title: '解析成功！',
+        icon: 'success'
+      })
+
+    } catch (error) {
+      console.error('解析失败:', error)
+      
+      wx.hideLoading()
+      
+      // 使用统一的错误处理
+      handleApiError(error, '视频解析')
+      
+    } finally {
+      this.setData({ isLoading: false })
     }
-    if (wx.createRewardedVideoAd) {
-      const rewardAd = wx.createRewardedVideoAd({ adUnitId: adVideoId });
-      rewardAd.onClose(res => {
-        if (res && res.isEnded) {
-          app.globalData.usedToday = Math.max(0, app.globalData.usedToday - 5);
-          wx.setStorageSync('used_today', app.globalData.usedToday);
-          wx.showToast({ title: '已增加 5 次解析额度！', icon: 'success' });
+  },
+
+  // 下载抖音视频
+  async downloadVideo() {
+    const { parseResult } = this.data
+    if (!parseResult || !parseResult.videoUrl) {
+      wx.showToast({
+        title: '无效的视频链接',
+        icon: 'none'
+      })
+      return
+    }
+
+    // 检查是否需要观看广告
+    if (!app.globalData.adWatched) {
+      wx.showModal({
+        title: '观看广告',
+        content: '首次保存视频需要观看一条广告，观看完成后今天内可无限保存视频，是否继续？',
+        confirmText: '继续',
+        cancelText: '取消',
+        success: (res) => {
+          if (res.confirm) {
+            this.showRewardedVideoAd()
+          }
         }
-      });
-      rewardAd.show().catch(() => rewardAd.load().then(() => rewardAd.show()));
+      })
+    } else {
+      // 已经观看过广告，直接下载
+      this.proceedWithDownload()
     }
   },
 
-  onShareAppMessage() {
-    return {
-      title: '短视频聚合解析工具 - 极速无水印提取',
-      path: '/pages/index/index'
-    };
-  }
-});
+  // 执行下载操作
+  async proceedWithDownload() {
+    const { parseResult } = this.data
+    
+    // 开始下载，显示进度条
+    this.setData({
+      isDownloading: true,
+      downloadProgress: 0,
+      downloadStage: 'downloading',
+      downloadStageText: '正在下载视频...'
+    })
+
+    try {
+      await downloadVideoWithProxy(
+        parseResult.videoUrl,
+        parseResult.title,
+        this.updateDownloadProgress.bind(this)
+      )
+    } catch (error) {
+      console.error('下载失败:', error)
+      
+      this.setData({
+        isDownloading: false,
+        downloadStage: 'failed',
+        downloadStageText: '下载失败'
+      })
+
+      // 如果下载失败，提供复制链接的备选方案
+      wx.showModal({
+        title: '下载失败',
+        content: error.message + '\n\n是否复制代理视频链接到剪贴板？',
+        confirmText: '复制链接',
+        cancelText: '取消',
+        success: (modalRes) => {
+          if (modalRes.confirm) {
+            this.copyVideoUrl()
+          }
+        }
+      })
+    }
+  },
+
+  // 更新下载进度
+  updateDownloadProgress(progress) {
+    const { percent, stage } = progress
+    let stageText = ''
+    
+    switch (stage) {
+      case 'downloading':
+        stageText = `正在下载视频... ${percent}%`
+        break
+      case 'saving':
+        stageText = '正在保存到相册...'
+        break
+      case 'completed':
+        stageText = '下载完成！'
+        // 延迟隐藏进度条
+        setTimeout(() => {
+          this.setData({
+            isDownloading: false
+          })
+        }, 1500)
+        // 显示成功提示
+        wx.showToast({
+          title: '视频已保存到相册',
+          icon: 'success',
+          duration: 2000
+        })
+        break
+      case 'failed':
+        stageText = '下载失败'
+        this.setData({
+          isDownloading: false
+        })
+        break
+    }
+    
+    // 使用动画更新进度，使进度变化更平滑
+    this.setData({
+      downloadProgress: Math.max(0, Math.min(100, percent)), // 确保进度在0-100之间
+      downloadStage: stage,
+      downloadStageText: stageText
+    })
+
+    // 如果是下载阶段，添加额外的视觉反馈
+    if (stage === 'downloading' && progress.totalBytesWritten && progress.totalBytesExpectedToWrite) {
+      const sizeInfo = `${this.formatSize(progress.totalBytesWritten)} / ${this.formatSize(progress.totalBytesExpectedToWrite)}`
+      console.log('下载进度详情:', sizeInfo)
+    }
+  },
+
+  // 复制视频链接（使用代理URL）
+  copyVideoUrl() {
+    const { parseResult } = this.data
+    if (!parseResult || !parseResult.videoUrl) {
+      wx.showToast({
+        title: '无效的视频链接',
+        icon: 'none'
+      })
+      return
+    }
+
+    // 重要：必须使用代理URL，按照接口文档要求
+    const urlToCopy = parseResult.proxyVideoUrl || getProxyVideoUrl(parseResult.videoUrl)
+
+    wx.setClipboardData({
+      data: urlToCopy,
+      success: () => {
+        wx.showToast({
+          title: '代理链接已复制（已处理防盗链）',
+          icon: 'success',
+          duration: 2000
+        })
+      },
+      fail: () => {
+        wx.showToast({
+          title: '复制失败',
+          icon: 'none'
+        })
+      }
+    })
+  },
+
+  // 复制标题
+  copyTitle() {
+    const { parseResult } = this.data
+    if (!parseResult || !parseResult.title) {
+      wx.showToast({
+        title: '暂无标题信息',
+        icon: 'none'
+      })
+      return
+    }
+
+    wx.setClipboardData({
+      data: parseResult.title,
+      success: () => {
+        wx.showToast({
+          title: '标题已复制',
+          icon: 'success'
+        })
+      },
+      fail: () => {
+        wx.showToast({
+          title: '复制失败',
+          icon: 'none'
+        })
+      }
+    })
+  },
+
+  // 复制作者
+  copyAuthor() {
+    const { parseResult } = this.data
+    if (!parseResult || !parseResult.author) {
+      wx.showToast({
+        title: '暂无作者信息',
+        icon: 'none'
+      })
+      return
+    }
+
+    wx.setClipboardData({
+      data: parseResult.author,
+      success: () => {
+        wx.showToast({
+          title: '作者已复制',
+          icon: 'success'
+        })
+      },
+      fail: () => {
+        wx.showToast({
+          title: '复制失败',
+          icon: 'none'
+        })
+      }
+    })
+  },
+
+  // 预览视频封面
+  previewCover() {
+    const { parseResult } = this.data
+    if (!parseResult || !parseResult.cover) {
+      wx.showToast({ title: '无封面图片', icon: 'none' })
+      return
+    }
+    
+    wx.previewImage({
+      current: parseResult.cover,
+      urls: [parseResult.cover]
+    })
+  },
+
+  // 格式化时长
+  formatDuration(seconds) {
+    if (!seconds) return ''
+    
+    const minutes = Math.floor(seconds / 60)
+    const remainingSeconds = seconds % 60
+    
+    return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`
+  },
+
+  // 格式化文件大小
+  formatSize(bytes) {
+    if (!bytes || bytes === 0) return ''
+    
+    const units = ['B', 'KB', 'MB', 'GB']
+    let size = bytes
+    let unitIndex = 0
+    
+    while (size >= 1024 && unitIndex < units.length - 1) {
+      size /= 1024
+      unitIndex++
+    }
+    
+    return `${size.toFixed(1)} ${units[unitIndex]}`
+  },
+
+
+}) 

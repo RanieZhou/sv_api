@@ -1,19 +1,28 @@
 {
-  "miniprogramRoot": "./",
-  "projectname": "去水印短视频小程序",
-  "description": "极速无水印视频与图集下载小程序",
   "appid": "wxe469358a90ddacb1",
+  "compileType": "miniprogram",
+  "libVersion": "3.3.5",
+  "packOptions": {
+    "ignore": [],
+    "include": []
+  },
   "setting": {
-    "urlCheck": false,
+    "coverView": true,
     "es6": true,
-    "enhance": true,
     "postcss": true,
     "minified": true,
+    "enhance": true,
+    "showShadowRootInWxmlPanel": true,
+    "packNpmRelationList": [],
+    "babelSetting": {
+      "ignore": [],
+      "disablePlugins": [],
+      "outputPath": ""
+    },
     "compileWorklet": false,
     "uglifyFileName": false,
     "uploadWithSourceMap": true,
     "packNpmManually": false,
-    "packNpmRelationList": [],
     "minifyWXSS": true,
     "minifyWXML": true,
     "localPlugins": false,
@@ -21,19 +30,12 @@
     "useCompilerPlugins": false,
     "condition": false,
     "swc": false,
-    "disableSWC": true,
-    "babelSetting": {
-      "ignore": [],
-      "disablePlugins": [],
-      "outputPath": ""
-    }
+    "disableSWC": true
   },
-  "compileType": "miniprogram",
-  "libVersion": "3.3.4",
-  "simulatorPluginLibVersion": {},
-  "packOptions": {
-    "ignore": [],
-    "include": []
+  "condition": {},
+  "editorSetting": {
+    "tabIndent": "insertSpaces",
+    "tabSize": 2
   },
-  "editorSetting": {}
+  "simulatorPluginLibVersion": {}
 }

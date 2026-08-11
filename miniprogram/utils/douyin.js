@@ -1,0 +1,273 @@
+/**
+ * 短视频去水印解析工具
+ * 对应服务端：https://shortvideo.aihubzone.cn
+ */
+
+const { getApiUrl } = require('../config/env.js');
+
+const DEFAULT_API_KEY = 'sk_test_00000000000000000000000000000001';
+
+/**
+ * 提取文本中的视频链接 (从完整分享文字中自动提取纯 http/https 链接)
+ * @param {string} text - 输入文本
+ * @returns {string} 提取到的纯链接
+ */
+function extractDouyinUrl(text) {
+  if (!text || typeof text !== 'string') {
+    return '';
+  }
+  
+  // 匹配文本中的 http:// 或 https:// 链接
+  const match = text.match(/https?:\/\/[^\s\u4e00-\u9fa5]+/i);
+  if (match && match[0]) {
+    return match[0].trim();
+  }
+  
+  return text.trim();
+}
+
+/**
+ * 测试接口连通性
+ * @returns {Promise}
+ */
+function testApiConnection() {
+  return new Promise((resolve) => {
+    const testUrl = 'https://v.douyin.com/iJoSKqrx/';
+    wx.request({
+      url: `${getApiUrl('/parse')}?url=${encodeURIComponent(testUrl)}&api_key=${DEFAULT_API_KEY}`,
+      method: 'GET',
+      timeout: 15000,
+      success: (res) => {
+        if (res.statusCode === 200 && res.data && res.data.code === 200) {
+          resolve({
+            success: true,
+            statusCode: res.statusCode,
+            message: '✅ 连接 shortvideo.aihubzone.cn 服务端成功！'
+          });
+        } else {
+          resolve({
+            success: false,
+            statusCode: res.statusCode,
+            message: `⚠️ 服务端连接正常，但响应报错：${res.data?.msg || '未知错误'}`
+          });
+        }
+      },
+      fail: (err) => {
+        resolve({
+          success: false,
+          error: err.errMsg,
+          message: `❌ 连接失败：${err.errMsg}`
+        });
+      }
+    });
+  });
+}
+
+/**
+ * 解析短视频
+ * @param {string} shareContent - 分享内容
+ * @param {string} apiKey - 可选的 API Key
+ * @returns {Promise} 解析结果
+ */
+function parseDouyinVideo(shareContent, apiKey = DEFAULT_API_KEY) {
+  return new Promise((resolve, reject) => {
+    try {
+      // 从包含描述的完整分享文本中提取 URL
+      const cleanUrl = extractDouyinUrl(shareContent);
+      if (!cleanUrl) {
+        reject(new Error('未在分享内容中找到有效的视频链接'));
+        return;
+      }
+      
+      console.log('正在提交解析链接:', cleanUrl);
+      
+      wx.request({
+        url: getApiUrl('/parse'),
+        method: 'GET',
+        data: {
+          url: cleanUrl,
+          api_key: apiKey
+        },
+        timeout: 15000,
+        success: (res) => {
+          console.log('解析接口返回:', res);
+          
+          if (res.statusCode === 200 && res.data && (res.data.code === 200 || res.data.code === 0)) {
+            const d = res.data.data || res.data;
+            const videoUrl = d.url || d.video_url || d.play_url || (d.video_urls && d.video_urls[0]) || '';
+            const authorName = d.author?.name || d.author || '未知作者';
+            
+            let imgs = [];
+            if (d.images && d.images.length > 0) {
+              imgs = d.images.map(img => typeof img === 'string' ? img : (img.url || img.url_list?.[0] || ''));
+            }
+
+            const formattedData = {
+              title: d.title || d.desc || '短视频作品',
+              author: authorName,
+              videoUrl: videoUrl,
+              cover: d.cover || '',
+              proxyVideoUrl: videoUrl,
+              images: imgs,
+              duration: d.duration ? Math.round(d.duration / 1000) : 0,
+              size: d.size || 0
+            };
+            
+            resolve(formattedData);
+          } else {
+            const errorMessage = res.data?.msg || res.data?.message || '解析失败，上游未响应有效内容';
+            reject(new Error(errorMessage));
+          }
+        },
+        fail: (err) => {
+          let errorMessage = '网络请求失败，请检查网络设置';
+          if (err.errMsg && err.errMsg.includes('domain')) {
+            errorMessage = '❌ 域名未配置在小程序合法域名列表中！请在微信后台添加 shortvideo.aihubzone.cn';
+          } else if (err.errMsg) {
+            errorMessage = `网络错误：${err.errMsg}`;
+          }
+          reject(new Error(errorMessage));
+        }
+      });
+    } catch (error) {
+      reject(error);
+    }
+  });
+}
+
+/**
+ * 获取代理视频URL
+ */
+function getProxyVideoUrl(originalUrl) {
+  return originalUrl || '';
+}
+
+/**
+ * 使用视频链接保存到相册
+ */
+function downloadVideoWithProxy(videoUrl, title = '短视频', onProgress = null) {
+  return new Promise(async (resolve, reject) => {
+    if (!videoUrl) {
+      reject(new Error('视频链接不能为空'));
+      return;
+    }
+
+    const hasAuth = await checkAlbumAuth();
+    if (!hasAuth) {
+      reject(new Error('需要授权访问相册才能保存视频'));
+      return;
+    }
+
+    try {
+      if (onProgress) onProgress({ percent: 10, stage: 'downloading' });
+
+      const downloadResult = await downloadFile(videoUrl, onProgress);
+
+      if (downloadResult.statusCode === 200) {
+        if (onProgress) onProgress({ percent: 95, stage: 'saving' });
+        await saveVideoToAlbum(downloadResult.tempFilePath);
+        if (onProgress) onProgress({ percent: 100, stage: 'completed' });
+        resolve(downloadResult.tempFilePath);
+      } else {
+        throw new Error(`下载失败，状态码：${downloadResult.statusCode}`);
+      }
+    } catch (error) {
+      if (onProgress) onProgress({ percent: 0, stage: 'failed' });
+      reject(error);
+    }
+  });
+}
+
+function checkAlbumAuth() {
+  return new Promise((resolve) => {
+    wx.getSetting({
+      success: (res) => {
+        if (res.authSetting['scope.writePhotosAlbum'] === false) {
+          wx.showModal({
+            title: '需要授权',
+            content: '需要您授权访问相册才能保存视频，请在设置中开启',
+            confirmText: '去设置',
+            success: (modalRes) => {
+              if (modalRes.confirm) wx.openSetting();
+              resolve(false);
+            }
+          });
+        } else if (res.authSetting['scope.writePhotosAlbum'] === undefined) {
+          wx.authorize({
+            scope: 'scope.writePhotosAlbum',
+            success: () => resolve(true),
+            fail: () => resolve(false)
+          });
+        } else {
+          resolve(true);
+        }
+      },
+      fail: () => resolve(false)
+    });
+  });
+}
+
+function downloadFile(url, onProgress = null) {
+  return new Promise((resolve, reject) => {
+    const downloadTask = wx.downloadFile({
+      url: url,
+      success: resolve,
+      fail: reject
+    });
+
+    if (onProgress) {
+      downloadTask.onProgressUpdate((res) => {
+        const downloadPercent = Math.floor((res.progress * 90) / 100);
+        onProgress({ 
+          percent: downloadPercent, 
+          stage: 'downloading',
+          totalBytesWritten: res.totalBytesWritten,
+          totalBytesExpectedToWrite: res.totalBytesExpectedToWrite
+        });
+      });
+    }
+  });
+}
+
+function saveVideoToAlbum(filePath) {
+  return new Promise((resolve, reject) => {
+    wx.saveVideoToPhotosAlbum({
+      filePath: filePath,
+      success: resolve,
+      fail: reject
+    });
+  });
+}
+
+function handleApiError(error, context = '') {
+  console.error(`${context} 错误:`, error);
+  const message = error.message || '操作失败';
+  wx.showToast({
+    title: message,
+    icon: 'none',
+    duration: 2500
+  });
+}
+
+function debounce(func, wait) {
+  let timeout;
+  return function executedFunction(...args) {
+    const later = () => {
+      clearTimeout(timeout);
+      func(...args);
+    };
+    clearTimeout(timeout);
+    timeout = setTimeout(later, wait);
+  };
+}
+
+module.exports = {
+  parseDouyinVideo,
+  getProxyVideoUrl,
+  extractDouyinUrl,
+  downloadVideoWithProxy,
+  checkAlbumAuth,
+  debounce,
+  testApiConnection,
+  handleApiError
+};

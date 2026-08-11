@@ -1,100 +1,206 @@
-<view class="container px-4 py-3">
+<!-- 首页 -->
+<view class="container">
+  <!-- 轮播图 - 仅在有内容时显示 -->
+  <view class="banner-section" wx:if="{{showBanners && banners.length > 0}}">
+    <swiper class="banner-swiper" indicator-dots="{{true}}" autoplay="{{true}}" interval="{{3000}}" duration="{{500}}" circular="{{true}}">
+      <swiper-item wx:for="{{banners}}" wx:key="id">
+        <image class="banner-image" src="{{item.imageUrl}}" mode="aspectFill" bindtap="onBannerTap" data-url="{{item.linkUrl}}"></image>
+      </swiper-item>
+    </swiper>
+  </view>
 
-  <!-- 1. 轮播图 (左右留有空间) -->
-  <view class="swiper-container mb-4">
-    <view class="swiper-wrapper">
-      <swiper class="banner-swiper" indicator-dots autoplay circular interval="4000" duration="500" indicator-color="rgba(255, 255, 255, 0.4)" indicator-active-color="#0284c7">
-        <swiper-item wx:for="{{banners}}" wx:key="index">
-          <view class="banner-item {{item.bgClass}} flex flex-col justify-center px-4">
-            <view class="banner-badge mb-1">{{item.badge}}</view>
-            <view class="banner-title text-lg font-bold text-white mb-1">{{item.title}}</view>
-            <view class="banner-desc text-xs text-sky-100">{{item.desc}}</view>
+  <!-- 链接输入区域 -->
+  <view class="input-section">
+    <view class="section-title">视频链接解析</view>
+    <view class="input-tip">
+      💡 支持直接粘贴完整的分享文本，系统会自动提取视频链接
+    </view>
+    <view class="input-container">
+      <textarea 
+        class="url-input" 
+        placeholder="请粘贴视频链接或完整分享文本"
+        value="{{inputUrl}}"
+        bindinput="onUrlInput"
+        auto-height
+        maxlength="2000"
+      ></textarea>
+      <view class="input-actions">
+        <button class="paste-btn" bindtap="pasteUrl" size="mini">粘贴</button>
+        <button class="clear-btn" bindtap="clearUrl" size="mini">清空</button>
+      </view>
+    </view>
+    
+    <button 
+      class="parse-btn {{!canParse ? 'disabled' : ''}}" 
+      bindtap="parseVideo"
+      disabled="{{!canParse || isLoading}}"
+      loading="{{isLoading}}"
+    >
+      {{isLoading ? '解析中...' : '开始解析'}}
+    </button>
+  </view>
+
+  <!-- 解析结果 -->
+  <view class="result-section" wx:if="{{parseResult}}">
+    <view class="section-title">🎉 解析成功</view>
+    <view class="result-container">
+      
+      <!-- 视频播放器 -->
+      <view class="video-player-container" wx:if="{{parseResult.proxyVideoUrl}}">
+        <video 
+          class="video-player"
+          src="{{parseResult.proxyVideoUrl}}"
+          poster="{{parseResult.cover}}"
+          controls
+          autoplay="{{false}}"
+          loop="{{false}}"
+          muted="{{false}}"
+          show-center-play-btn="{{true}}"
+          show-play-btn="{{true}}"
+          enable-play-gesture="{{true}}"
+        ></video>
+        <view class="video-player-tip">
+          <text>📱 可直接播放无水印视频</text>
+        </view>
+      </view>
+
+      <!-- 视频封面（备用） -->
+      <view class="video-cover-container" wx:elif="{{parseResult.cover}}">
+        <image 
+          class="video-cover" 
+          src="{{parseResult.cover}}" 
+          mode="aspectFill"
+          bindtap="previewCover"
+        ></image>
+        <view class="video-duration-overlay" wx:if="{{parseResult.duration > 0}}">
+          {{formatDuration(parseResult.duration)}}
+        </view>
+        <view class="play-overlay">
+          <text class="play-icon">▶️</text>
+        </view>
+      </view>
+      
+      <!-- 视频信息 -->
+      <view class="video-info">
+        <view class="video-title" wx:if="{{parseResult.title}}">
+          <view class="info-row">
+            <text class="info-label">📝 标题：</text>
+            <text class="info-content">{{parseResult.title}}</text>
           </view>
-        </swiper-item>
-      </swiper>
-    </view>
-  </view>
-
-  <!-- 2. 文本框卡片 (已去除“粘贴文本框”标题和“今日可用次数”) -->
-  <view class="card mb-4">
-    <!-- 文本框 -->
-    <textarea
-      class="input-textarea"
-      value="{{inputUrl}}"
-      bindinput="onInputChange"
-      placeholder="粘贴抖音、快手、小红书、B站等短视频或图集分享链接..."
-      placeholder-class="placeholder-style"
-      maxlength="500"
-    ></textarea>
-
-    <!-- 一键粘贴 与 开始提取 (完美水平对齐) -->
-    <view class="button-group mt-3">
-      <button class="btn-action-half secondary" bindtap="pasteClipboard">
-        <text>📋 一键粘贴</text>
-      </button>
-      <button class="btn-action-half primary" bindtap="startParse" loading="{{loading}}">
-        <text>{{loading ? '提取中...' : '🚀 开始提取'}}</text>
-      </button>
-    </view>
-  </view>
-
-  <!-- 3. 小组件区域: 使用教程 与 常见问题 (点击直接跳转到新页面，无弹窗) -->
-  <view class="widget-grid-2 mb-4">
-    <view class="widget-card-large" bindtap="openTutorialPage">
-      <view class="widget-icon-large bg-sky">📖</view>
-      <view class="widget-title-large">使用教程</view>
-      <view class="widget-desc-large">三步快速上手去水印</view>
-    </view>
-
-    <view class="widget-card-large" bindtap="openFaqPage">
-      <view class="widget-icon-large bg-blue">💡</view>
-      <view class="widget-title-large">常见问题</view>
-      <view class="widget-desc-large">解答与故障处理指南</view>
-    </view>
-  </view>
-
-  <!-- 4. 解析结果展示 -->
-  <view class="card result-card" wx:if="{{hasResult}}">
-    <view class="text-sm font-semibold text-slate-800 mb-3 flex items-center justify-between">
-      <text>🎉 解析结果</text>
-      <text class="text-xs text-slate-500" wx:if="{{resultData.author && resultData.author.name}}">作者: {{resultData.author.name}}</text>
-    </view>
-
-    <!-- 标题与描述 -->
-    <view class="mb-3" wx:if="{{resultData.title || resultData.desc}}">
-      <view class="result-desc">
-        {{resultData.title || resultData.desc}}
+          <button class="copy-info-btn" bindtap="copyTitle" size="mini">
+            <text class="copy-icon">📋</text>
+            <text>复制</text>
+          </button>
+        </view>
+        <view class="video-author" wx:if="{{parseResult.author}}">
+          <view class="info-row">
+            <text class="info-label">👤 作者：</text>
+            <text class="info-content">{{parseResult.author}}</text>
+          </view>
+          <button class="copy-info-btn" bindtap="copyAuthor" size="mini">
+            <text class="copy-icon">📋</text>
+            <text>复制</text>
+          </button>
+        </view>
+        <view class="video-duration" wx:if="{{parseResult.duration > 0}}">
+          <text class="info-label">⏱️ 时长：</text>
+          <text class="info-content">{{formatDuration(parseResult.duration)}}</text>
+        </view>
+        <view class="video-size" wx:if="{{parseResult.size > 0}}">
+          <text class="info-label">📦 大小：</text>
+          <text class="info-content">{{formatSize(parseResult.size)}}</text>
+        </view>
+        <view class="video-status">
+          <text class="info-label">✅ 状态：</text>
+          <text class="info-content success">解析成功，已去除水印</text>
+        </view>
       </view>
-    </view>
-
-    <!-- 视频预览与下载 -->
-    <block wx:if="{{videoUrl}}">
-      <view class="video-wrapper mb-3">
-        <video class="video-player" src="{{videoUrl}}" controls preload="metadata"></video>
-      </view>
-
-      <view class="flex flex-col gap-2 mb-3">
-        <button class="btn-action primary mb-2" bindtap="saveVideo">
-          <text>📥 保存无水印视频到相册</text>
+      
+      <!-- 操作按钮 -->
+      <view class="result-actions">
+        <button class="download-btn primary" bindtap="downloadVideo" disabled="{{isDownloading}}">
+          <text class="btn-icon">💾</text>
+          <text>{{isDownloading ? '下载中...' : '保存到相册'}}</text>
         </button>
-        <button class="btn-action secondary" bindtap="copyLink">
-          <text>🔗 复制无水印直链</text>
+        <button class="copy-btn secondary" bindtap="copyVideoUrl" disabled="{{isDownloading}}">
+          <text class="btn-icon">🔗</text>
+          <text>复制链接</text>
         </button>
       </view>
-    </block>
 
-    <!-- 图集预览与下载 -->
-    <block wx:if="{{imageList.length > 0}}">
-      <view class="text-xs text-sky-600 mb-2 font-semibold">高清图集 (共 {{imageList.length}} 张)</view>
-      <view class="image-grid mb-3">
-        <block wx:for="{{imageList}}" wx:key="index">
-          <image class="grid-img" src="{{item}}" mode="aspectFill" bindtap="previewImage" data-src="{{item}}"></image>
-        </block>
+      <!-- 下载进度条 -->
+      <view class="download-progress-container" wx:if="{{isDownloading}}">
+        <view class="progress-info">
+          <text class="progress-text">{{downloadStageText}}</text>
+          <text class="progress-percent" wx:if="{{downloadStage === 'downloading'}}">{{downloadProgress}}%</text>
+        </view>
+        <view class="progress-bar">
+          <view class="progress-fill" style="width: {{downloadProgress}}%"></view>
+        </view>
       </view>
-      <button class="btn-action primary mb-2" bindtap="saveAllImages">
-        <text>🖼️ 保存全部高清图集到相册</text>
-      </button>
-    </block>
+
+      <!-- 提示信息 -->
+      <view class="result-tips">
+        <text class="tip-text">💡 视频已自动去除水印，可直接播放或保存</text>
+      </view>
+    </view>
   </view>
 
+  <!-- 抖音特色功能 -->
+  <view class="platform-section">
+    <view class="section-title">🎯 抖音专业解析</view>
+    <view class="feature-grid">
+      <view class="feature-item">
+        <text class="feature-icon">🚫</text>
+        <text class="feature-name">去除水印</text>
+        <text class="feature-desc">完全去除抖音水印</text>
+      </view>
+      <view class="feature-item">
+        <text class="feature-icon">⚡</text>
+        <text class="feature-name">高速解析</text>
+        <text class="feature-desc">秒级解析，即时可用</text>
+      </view>
+      <view class="feature-item">
+        <text class="feature-icon">🎬</text>
+        <text class="feature-name">直接播放</text>
+        <text class="feature-desc">无需下载即可观看</text>
+      </view>
+      <view class="feature-item">
+        <text class="feature-icon">💾</text>
+        <text class="feature-name">保存相册</text>
+        <text class="feature-desc">一键保存到手机</text>
+      </view>
+    </view>
+  </view>
+
+  <!-- 使用说明 -->
+  <view class="tips-section">
+    <view class="section-title">使用说明</view>
+    <view class="tips-content">
+      <view class="tip-item">
+        <text class="tip-number">1</text>
+        <text class="tip-text">在短视频APP中点击"分享"→"复制链接"</text>
+      </view>
+      <view class="tip-item">
+        <text class="tip-number">2</text>
+        <text class="tip-text">直接粘贴完整的分享文本到输入框（无需手动提取链接）</text>
+      </view>
+      <view class="tip-item">
+        <text class="tip-number">3</text>
+        <text class="tip-text">系统自动识别并提取视频链接</text>
+      </view>
+      <view class="tip-item">
+        <text class="tip-number">4</text>
+        <text class="tip-text">点击"开始解析"获取无水印视频下载链接</text>
+      </view>
+    </view>
+  </view>
 </view>
+
+<!-- 加载提示 -->
+<view class="loading-overlay" wx:if="{{isLoading}}">
+  <view class="loading-content">
+    <view class="loading-spinner"></view>
+    <text class="loading-text">正在解析视频...</text>
+  </view>
+</view> 
