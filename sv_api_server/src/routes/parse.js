@@ -35,8 +35,13 @@ async function handleParseRequest(req, res) {
     const responseTimeMs = Date.now() - startTime;
     logApiCall(req.apiKey, targetUrl, clientIp, 200, responseTimeMs);
 
-    // 将上游 API 返回的 JSON 数据原样透传返回
-    return res.json(response.data);
+    // 移除上游接口返回的版权标识 (bktip)
+    const responseData = response.data;
+    if (responseData && typeof responseData === 'object') {
+      delete responseData.bktip;
+    }
+
+    return res.json(responseData);
   } catch (err) {
     const responseTimeMs = Date.now() - startTime;
     const statusCode = err.response ? err.response.status : 500;
