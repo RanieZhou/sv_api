@@ -1,0 +1,20 @@
+/* faq.wxss */
+.faq-item {
+  background: #f8fafc;
+  border: 1rpx solid #e2e8f0;
+  border-radius: 18rpx;
+  padding: 24rpx;
+}
+
+.faq-q {
+  font-size: 28rpx;
+  font-weight: bold;
+  color: #0284c7;
+  margin-bottom: 12rpx;
+}
+
+.faq-a {
+  font-size: 25rpx;
+  color: #475569;
+  line-height: 1.6;
+}

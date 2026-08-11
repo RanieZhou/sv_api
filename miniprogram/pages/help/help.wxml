@@ -2,7 +2,7 @@
 
   <!-- 支持平台列表 -->
   <view class="card">
-    <view class="text-sm font-bold text-white mb-3">支持多平台解析</view>
+    <view class="text-base font-bold text-slate-800 mb-3">支持多平台无水印解析</view>
     <view class="platform-chips">
       <text class="chip">🎵 抖音 / TikTok</text>
       <text class="chip">⚡ 快手</text>
@@ -17,29 +17,29 @@
 
   <!-- 图文使用教程步骤 -->
   <view class="card">
-    <view class="text-sm font-bold text-white mb-4">使用步骤教程</view>
+    <view class="text-base font-bold text-slate-800 mb-4">📖 使用步骤教程</view>
 
-    <view class="step-item mb-4">
-      <view class="step-number">1</view>
+    <view class="step-item mb-4 flex gap-3">
+      <view class="step-number flex items-center justify-center">1</view>
       <view class="step-content">
         <view class="step-title">打开短视频 App 复制链接</view>
-        <view class="step-desc">进入抖音、快手、小红书等 App，找到您喜欢的视频，点击【分享】按钮，选择【复制链接】。</view>
+        <view class="step-desc">进入抖音、快手、小红书等 App，找到您喜欢的视频或图集，点击【分享】按钮，选择【复制链接】。</view>
       </view>
     </view>
 
-    <view class="step-item mb-4">
-      <view class="step-number">2</view>
+    <view class="step-item mb-4 flex gap-3">
+      <view class="step-number flex items-center justify-center">2</view>
       <view class="step-content">
         <view class="step-title">打开本小程序一键粘贴</view>
-        <view class="step-desc">打开【去水印助手】小程序，首页会自动识别剪贴板，或点击【一键粘贴】按钮即可。</view>
+        <view class="step-desc">打开小程序，首页会自动识别剪贴板链接，或直接点击【一键粘贴】按钮。</view>
       </view>
     </view>
 
-    <view class="step-item">
-      <view class="step-number">3</view>
+    <view class="step-item flex gap-3">
+      <view class="step-number flex items-center justify-center">3</view>
       <view class="step-content">
         <view class="step-title">保存无水印视频到手机相册</view>
-        <view class="step-desc">点击【提取无水印资源】，成功解析后点击【保存视频到相册】即可完成下载！</view>
+        <view class="step-desc">点击【开始提取】，成功解析后点击【保存无水印视频到相册】或【保存全部高清图集】即可完成下载！</view>
       </view>
     </view>
   </view>

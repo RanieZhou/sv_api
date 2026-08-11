@@ -177,23 +177,17 @@ Page({
     wx.setStorageSync('parse_history', history);
   },
 
-  // 打开使用教程弹窗
-  openTutorialModal() {
-    wx.showModal({
-      title: '📖 使用教程',
-      content: '1️⃣ 打开抖音、快手、小红书等 App\n2️⃣ 点击【分享】按钮，选择【复制链接】\n3️⃣ 打开本小程序，点击【一键粘贴】，再点击【开始提取】即可无水印下载视频或保存高清图集到相册！',
-      showCancel: false,
-      confirmText: '我知道了'
+  // 跳转到使用教程新页面 (不弹窗)
+  openTutorialPage() {
+    wx.navigateTo({
+      url: '/pages/help/help'
     });
   },
 
-  // 打开常见问题弹窗
-  openFaqModal() {
-    wx.showModal({
-      title: '💡 常见问题解答',
-      content: 'Q1: 保存视频到相册提示失败？\nA: 请在手机设置中检查是否已允许微信访问系统相册权限。\n\nQ2: 提示链接解析失败？\nA: 请确认复制的是作品分享链接，勿包含非相关字符或私密作品链接。\n\nQ3: 是否收费？\nA: 本工具提供每日免费解析额度，无需登录开箱即用。',
-      showCancel: false,
-      confirmText: '关闭'
+  // 跳转到常见问题新页面 (不弹窗)
+  openFaqPage() {
+    wx.navigateTo({
+      url: '/pages/faq/faq'
     });
   },
 

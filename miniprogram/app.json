@@ -2,20 +2,21 @@
   "pages": [
     "pages/index/index",
     "pages/mine/mine",
-    "pages/help/help"
+    "pages/help/help",
+    "pages/faq/faq"
   ],
   "window": {
-    "backgroundTextStyle": "light",
-    "navigationBarBackgroundColor": "#0f172a",
+    "backgroundTextStyle": "dark",
+    "navigationBarBackgroundColor": "#ffffff",
     "navigationBarTitleText": "短视频聚合解析工具",
-    "navigationBarTextStyle": "white",
-    "backgroundColor": "#0f172a"
+    "navigationBarTextStyle": "black",
+    "backgroundColor": "#f8fafc"
   },
   "tabBar": {
-    "color": "#94a3b8",
-    "selectedColor": "#06b6d4",
-    "backgroundColor": "#1e293b",
-    "borderStyle": "black",
+    "color": "#64748b",
+    "selectedColor": "#0284c7",
+    "backgroundColor": "#ffffff",
+    "borderStyle": "white",
     "list": [
       {
         "pagePath": "pages/index/index",

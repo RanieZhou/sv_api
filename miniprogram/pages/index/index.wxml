@@ -1,25 +1,22 @@
 <view class="container px-4 py-3">
 
-  <!-- 1. 轮播图 -->
-  <view class="swiper-wrapper mb-3">
-    <swiper class="banner-swiper" indicator-dots autoplay circular interval="4000" duration="500" indicator-color="rgba(255, 255, 255, 0.3)" indicator-active-color="#06b6d4">
-      <swiper-item wx:for="{{banners}}" wx:key="index">
-        <view class="banner-item {{item.bgClass}} flex flex-col justify-center px-4">
-          <view class="banner-badge mb-1">{{item.badge}}</view>
-          <view class="banner-title text-lg font-bold text-white mb-1">{{item.title}}</view>
-          <view class="banner-desc text-xs text-slate-200">{{item.desc}}</view>
-        </view>
-      </swiper-item>
-    </swiper>
+  <!-- 1. 轮播图 (左右留有空间) -->
+  <view class="swiper-container mb-4">
+    <view class="swiper-wrapper">
+      <swiper class="banner-swiper" indicator-dots autoplay circular interval="4000" duration="500" indicator-color="rgba(255, 255, 255, 0.4)" indicator-active-color="#0284c7">
+        <swiper-item wx:for="{{banners}}" wx:key="index">
+          <view class="banner-item {{item.bgClass}} flex flex-col justify-center px-4">
+            <view class="banner-badge mb-1">{{item.badge}}</view>
+            <view class="banner-title text-lg font-bold text-white mb-1">{{item.title}}</view>
+            <view class="banner-desc text-xs text-sky-100">{{item.desc}}</view>
+          </view>
+        </swiper-item>
+      </swiper>
+    </view>
   </view>
 
-  <!-- 2. 粘贴文本框卡片 -->
-  <view class="card mb-3">
-    <view class="flex items-center justify-between mb-2">
-      <view class="text-sm font-semibold text-white">粘贴文本框</view>
-      <view class="badge">今日可用: {{remainingQuota}} 次</view>
-    </view>
-
+  <!-- 2. 文本框卡片 (已去除“粘贴文本框”标题和“今日可用次数”) -->
+  <view class="card mb-4">
     <!-- 文本框 -->
     <textarea
       class="input-textarea"
@@ -30,8 +27,8 @@
       maxlength="500"
     ></textarea>
 
-    <!-- 两个主操作按钮: 一键粘贴 与 开始提取 -->
-    <view class="flex items-center gap-3 mt-3">
+    <!-- 一键粘贴 与 开始提取 (完美水平对齐) -->
+    <view class="button-group mt-3">
       <button class="btn-action-half secondary" bindtap="pasteClipboard">
         <text>📋 一键粘贴</text>
       </button>
@@ -41,16 +38,16 @@
     </view>
   </view>
 
-  <!-- 3. 小组件区域: 使用教程 与 常见问题 (两栏并排) -->
-  <view class="widget-grid-2 mb-3">
-    <view class="widget-card-large" bindtap="openTutorialModal">
-      <view class="widget-icon-large bg-cyan">📖</view>
+  <!-- 3. 小组件区域: 使用教程 与 常见问题 (点击直接跳转到新页面，无弹窗) -->
+  <view class="widget-grid-2 mb-4">
+    <view class="widget-card-large" bindtap="openTutorialPage">
+      <view class="widget-icon-large bg-sky">📖</view>
       <view class="widget-title-large">使用教程</view>
       <view class="widget-desc-large">三步快速上手去水印</view>
     </view>
 
-    <view class="widget-card-large" bindtap="openFaqModal">
-      <view class="widget-icon-large bg-emerald">💡</view>
+    <view class="widget-card-large" bindtap="openFaqPage">
+      <view class="widget-icon-large bg-blue">💡</view>
       <view class="widget-title-large">常见问题</view>
       <view class="widget-desc-large">解答与故障处理指南</view>
     </view>
@@ -58,9 +55,9 @@
 
   <!-- 4. 解析结果展示 -->
   <view class="card result-card" wx:if="{{hasResult}}">
-    <view class="text-sm font-semibold text-white mb-3 flex items-center justify-between">
+    <view class="text-sm font-semibold text-slate-800 mb-3 flex items-center justify-between">
       <text>🎉 解析结果</text>
-      <text class="text-xs text-slate-400" wx:if="{{resultData.author && resultData.author.name}}">作者: {{resultData.author.name}}</text>
+      <text class="text-xs text-slate-500" wx:if="{{resultData.author && resultData.author.name}}">作者: {{resultData.author.name}}</text>
     </view>
 
     <!-- 标题与描述 -->
@@ -88,7 +85,7 @@
 
     <!-- 图集预览与下载 -->
     <block wx:if="{{imageList.length > 0}}">
-      <view class="text-xs text-cyan-400 mb-2 font-semibold">高清图集 (共 {{imageList.length}} 张)</view>
+      <view class="text-xs text-sky-600 mb-2 font-semibold">高清图集 (共 {{imageList.length}} 张)</view>
       <view class="image-grid mb-3">
         <block wx:for="{{imageList}}" wx:key="index">
           <image class="grid-img" src="{{item}}" mode="aspectFill" bindtap="previewImage" data-src="{{item}}"></image>
