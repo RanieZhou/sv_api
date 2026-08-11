@@ -643,4 +643,140 @@
     flex-direction: column;
     gap: 16rpx;
   }
-} 
+}
+
+/* ===== 作者信息栏 ===== */
+.author-bar {
+  display: flex;
+  align-items: center;
+  gap: 20rpx;
+  padding: 24rpx 0 20rpx;
+  border-bottom: 1rpx solid #F0F4F8;
+  margin-bottom: 20rpx;
+}
+
+.author-avatar {
+  width: 80rpx;
+  height: 80rpx;
+  border-radius: 50%;
+  background: #E8F4FD;
+  flex-shrink: 0;
+  border: 3rpx solid #E8F4FD;
+}
+
+.author-meta {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 6rpx;
+  overflow: hidden;
+}
+
+.author-name {
+  font-size: 30rpx;
+  font-weight: 600;
+  color: #2C3E50;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.author-id {
+  font-size: 22rpx;
+  color: #95A5A6;
+}
+
+/* 内容类型徽章 */
+.content-type-badge {
+  font-size: 22rpx;
+  font-weight: 600;
+  padding: 8rpx 18rpx;
+  border-radius: 30rpx;
+  flex-shrink: 0;
+}
+
+.badge-video {
+  background: linear-gradient(135deg, #667eea, #764ba2);
+  color: #fff;
+}
+
+.badge-image {
+  background: linear-gradient(135deg, #f093fb, #f5576c);
+  color: #fff;
+}
+
+/* ===== 图集轮播 ===== */
+.image-gallery-container {
+  margin: 10rpx 0 20rpx;
+  border-radius: 16rpx;
+  overflow: hidden;
+  background: #000;
+}
+
+.gallery-swiper {
+  height: 560rpx;
+  width: 100%;
+}
+
+.gallery-image {
+  width: 100%;
+  height: 100%;
+}
+
+.gallery-count {
+  background: rgba(0, 0, 0, 0.65);
+  color: #fff;
+  font-size: 24rpx;
+  padding: 16rpx 24rpx;
+  display: flex;
+  align-items: center;
+  gap: 10rpx;
+}
+
+.gallery-icon {
+  font-size: 28rpx;
+}
+
+/* ===== 互动数据统计 ===== */
+.stats-bar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0;
+  background: linear-gradient(135deg, #f8f9ff, #f0f4ff);
+  border-radius: 16rpx;
+  padding: 24rpx 20rpx;
+  margin: 0 0 20rpx;
+  border: 1rpx solid #E8EEFF;
+}
+
+.stat-item {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6rpx;
+}
+
+.stat-icon {
+  font-size: 36rpx;
+}
+
+.stat-num {
+  font-size: 30rpx;
+  font-weight: 700;
+  color: #2C3E50;
+  line-height: 1;
+}
+
+.stat-label {
+  font-size: 22rpx;
+  color: #95A5A6;
+}
+
+.stat-divider {
+  width: 1rpx;
+  height: 60rpx;
+  background: #DDE6F0;
+  flex-shrink: 0;
+}

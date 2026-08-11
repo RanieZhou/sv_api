@@ -312,16 +312,28 @@ Page({
       
       console.log('解析成功，视频数据:', videoData)
 
-      // 按照接口文档的标准字段格式化数据
+      // 完整解析结果，包含所有可展示字段
       const formattedData = {
         success: true,
-        title: videoData.title || '抖音视频',
+        type: videoData.type || 'video',           // 内容类型：video / images
+        title: videoData.title || '短视频作品',
+        // 作者信息
         author: videoData.author || '未知作者',
+        authorAvatar: videoData.authorAvatar || '',
+        authorId: videoData.authorId || '',
+        // 媒体资源
         videoUrl: videoData.videoUrl || '',
         cover: videoData.cover || '',
-        proxyVideoUrl: videoData.proxyVideoUrl, // 重要：必须使用代理URL
+        proxyVideoUrl: videoData.proxyVideoUrl,    // 视频播放必须用代理URL
+        images: videoData.images || [],            // 图集列表
+        // 视频参数
         duration: videoData.duration || 0,
         size: videoData.size || 0,
+        // 互动数据
+        likeCount: videoData.likeCount || 0,
+        commentCount: videoData.commentCount || 0,
+        collectCount: videoData.collectCount || 0,
+        shareCount: videoData.shareCount || 0,
         originalUrl: inputUrl
       }
       
@@ -564,10 +576,75 @@ Page({
       wx.showToast({ title: '无封面图片', icon: 'none' })
       return
     }
-    
     wx.previewImage({
       current: parseResult.cover,
       urls: [parseResult.cover]
+    })
+  },
+
+  // 预览图集
+  previewImages(e) {
+    const { parseResult } = this.data
+    if (!parseResult || !parseResult.images || parseResult.images.length === 0) return
+    const index = e.currentTarget.dataset.index || 0
+    wx.previewImage({
+      current: parseResult.images[index],
+      urls: parseResult.images
+    })
+  },
+
+  // 批量保存图集到相册
+  async saveImages() {
+    const { parseResult } = this.data
+    if (!parseResult || !parseResult.images || parseResult.images.length === 0) {
+      wx.showToast({ title: '没有可保存的图片', icon: 'none' })
+      return
+    }
+
+    // 检查相册权限
+    const authRes = await new Promise(resolve => wx.authorize({ scope: 'scope.writePhotosAlbum', success: () => resolve(true), fail: () => resolve(false) }))
+    if (!authRes) {
+      wx.showModal({
+        title: '需要相册权限',
+        content: '请在设置中开启相册写入权限',
+        confirmText: '去设置',
+        success: (r) => { if (r.confirm) wx.openSetting() }
+      })
+      return
+    }
+
+    const images = parseResult.images
+    wx.showLoading({ title: `保存中 0/${images.length}`, mask: true })
+
+    let successCount = 0
+    for (let i = 0; i < images.length; i++) {
+      try {
+        await new Promise((resolve, reject) => {
+          wx.downloadFile({
+            url: images[i],
+            success: (dlRes) => {
+              if (dlRes.statusCode === 200) {
+                wx.saveImageToPhotosAlbum({
+                  filePath: dlRes.tempFilePath,
+                  success: () => { successCount++; resolve() },
+                  fail: reject
+                })
+              } else reject(new Error('下载失败'))
+            },
+            fail: reject
+          })
+        })
+        wx.showLoading({ title: `保存中 ${i + 1}/${images.length}`, mask: true })
+      } catch (err) {
+        console.error(`第${i + 1}张图片保存失败:`, err)
+      }
+    }
+
+    wx.hideLoading()
+    wx.showToast({
+      title: `已保存 ${successCount}/${images.length} 张图片`,
+      icon: successCount === images.length ? 'success' : 'none',
+      duration: 2500
     })
   },
 

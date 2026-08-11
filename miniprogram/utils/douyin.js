@@ -98,23 +98,38 @@ function parseDouyinVideo(shareContent, apiKey = DEFAULT_API_KEY) {
           if (res.statusCode === 200 && res.data && (res.data.code === 200 || res.data.code === 0)) {
             const d = res.data.data || res.data;
             const videoUrl = d.url || d.video_url || d.play_url || (d.video_urls && d.video_urls[0]) || '';
-            const authorName = d.author?.name || d.author || '未知作者';
-            
+            const authorObj = d.author || {};
+            const authorName = typeof authorObj === 'string' ? authorObj : (authorObj.name || '未知作者');
+
+            // 图集模式：提取图片列表
             let imgs = [];
             if (d.images && d.images.length > 0) {
               imgs = d.images.map(img => typeof img === 'string' ? img : (img.url || img.url_list?.[0] || ''));
             }
 
+            // 内容类型：video / images
+            const contentType = (imgs.length > 0 && !videoUrl) ? 'images' : (d.type || 'video');
+
             const formattedData = {
+              type: contentType,
               title: d.title || d.desc || '短视频作品',
+              // 作者信息
               author: authorName,
+              authorAvatar: typeof authorObj === 'object' ? (authorObj.avatar || authorObj.avatar_url || '') : '',
+              authorId: typeof authorObj === 'object' ? (String(authorObj.id || authorObj.uid || '')) : '',
+              // 媒体资源
               videoUrl: videoUrl,
-              cover: d.cover || '',
-              // 通过服务器代理中转，解决小程序播放防盗链黑屏问题
+              cover: d.cover || d.cover_url || '',
               proxyVideoUrl: getProxyVideoUrl(videoUrl),
               images: imgs,
+              // 视频参数
               duration: d.duration ? Math.round(d.duration / 1000) : 0,
-              size: d.size || 0
+              size: d.size || 0,
+              // 互动数据
+              likeCount: d.digg_count || d.like_count || d.statistics?.digg_count || 0,
+              commentCount: d.comment_count || d.statistics?.comment_count || 0,
+              collectCount: d.collect_count || d.statistics?.collect_count || 0,
+              shareCount: d.share_count || d.statistics?.share_count || 0,
             };
             
             resolve(formattedData);
