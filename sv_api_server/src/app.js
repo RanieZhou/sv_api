@@ -47,7 +47,7 @@ app.get('/health', (req, res) => {
 // 5. 启动服务器
 app.listen(config.port, () => {
   console.log(`=======================================================`);
-  console.log(`🚀 SV-API Node.js 服务已在端口 ${config.port} 成功启动！`);
+  console.log(`🚀 云边去水印API Node.js 服务已在端口 ${config.port} 成功启动！`);
   console.log(`🌐 对外解析接口:  http://localhost:${config.port}/api/parse?url=xxx&api_key=xxx`);
   console.log(`📱 小程序管理后台: http://localhost:${config.port}/admin/`);
   console.log(`🔑 独立 Key 控制台: http://localhost:${config.port}/keyadmin/`);

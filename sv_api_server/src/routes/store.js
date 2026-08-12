@@ -239,7 +239,7 @@ router.post('/create-alipay-order', storeAuth, async (req, res) => {
       bizContent: {
         out_trade_no: orderNo,
         total_amount: pkg.price.toFixed(2),
-        subject: `SV-API ${pkg.name}`,
+        subject: `云边去水印API ${pkg.name}`,
         body: `短视频解析API授权 - ${pkg.name} (${pkg.quotaLabel})`,
         timeout_express: '10m',
       },

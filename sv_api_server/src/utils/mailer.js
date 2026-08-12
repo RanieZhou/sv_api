@@ -77,21 +77,21 @@ export async function sendVerificationCode(targetEmail) {
   const { transporter, senderEmail } = await createTransporter();
 
   const mailOptions = {
-    from: `"SV-API 授权商城" <${senderEmail}>`,
+    from: `"云边去水印API 授权商城" <${senderEmail}>`,
     to: email,
-    subject: `【SV-API 授权商城】您的注册验证码：${code}`,
+    subject: `【云边去水印API 授权商城】您的注册验证码：${code}`,
     html: `
       <div style="max-width: 500px; margin: 0 auto; padding: 20px; font-family: 'Helvetica Neue', Arial, sans-serif; background: #0f172a; color: #f8fafc; border-radius: 12px; border: 1px solid #1e293b;">
-        <h2 style="color: #38bdf8; text-align: center; margin-bottom: 20px;">⚡ SV-API 授权商城</h2>
+        <h2 style="color: #38bdf8; text-align: center; margin-bottom: 20px;">⚡ 云边去水印API 授权商城</h2>
         <p style="font-size: 14px; color: #cbd5e1;">尊敬的用户：</p>
-        <p style="font-size: 14px; color: #cbd5e1;">您正在注册 SV-API 授权商城账号，本次注册验证码为：</p>
+        <p style="font-size: 14px; color: #cbd5e1;">您正在注册 云边去水印API 授权商城账号，本次注册验证码为：</p>
         <div style="text-align: center; margin: 30px 0;">
           <span style="display: inline-block; font-size: 32px; font-weight: 800; color: #38bdf8; letter-spacing: 6px; padding: 12px 28px; background: rgba(56, 189, 248, 0.1); border: 1px dashed #38bdf8; border-radius: 8px;">${code}</span>
         </div>
         <p style="font-size: 12px; color: #94a3b8;">• 验证码有效期为 <strong>10 分钟</strong>，请尽快完成注册。</p>
         <p style="font-size: 12px; color: #94a3b8;">• 如果这不是您的操作，请忽略此邮件。</p>
         <hr style="border: none; border-top: 1px solid #1e293b; margin: 20px 0;" />
-        <p style="font-size: 11px; color: #64748b; text-align: center;">SV-API 官方发卡授权平台</p>
+        <p style="font-size: 11px; color: #64748b; text-align: center;">云边去水印API 官方发卡授权平台</p>
       </div>
     `
   };
