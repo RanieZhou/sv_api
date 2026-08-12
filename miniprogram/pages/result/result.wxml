@@ -226,6 +226,12 @@ module.exports = { fmtNum: fmtNum, fmtFans: fmtFans, fmtDur: fmtDur };
         <text class="info-body">{{parseResult.title}}</text>
       </view>
 
+      <!-- 描述（部分平台 desc 与 title 不同，如小红书） -->
+      <view class="info-block" wx:if="{{parseResult.desc}}">
+        <text class="info-label">📄 描述</text>
+        <text class="info-body desc-body">{{parseResult.desc}}</text>
+      </view>
+
       <!-- 话题标签 -->
       <view class="info-block" wx:if="{{parseResult.hashtags && parseResult.hashtags.length > 0}}">
         <text class="info-label">🏷️ 话题</text>
@@ -245,7 +251,7 @@ module.exports = { fmtNum: fmtNum, fmtFans: fmtFans, fmtDur: fmtDur };
         </view>
       </view>
 
-      <!-- 视频信息 -->
+      <!-- 视频/内容信息 -->
       <view class="info-block">
         <view class="kv-row" wx:if="{{parseResult.duration > 0}}">
           <text class="kv-key">⏱️ 时长</text>
@@ -255,12 +261,17 @@ module.exports = { fmtNum: fmtNum, fmtFans: fmtFans, fmtDur: fmtDur };
           <text class="kv-key">📅 发布</text>
           <text class="kv-val">{{parseResult.createTime}}</text>
         </view>
+        <view class="kv-row" wx:if="{{parseResult.platform}}">
+          <text class="kv-key">🌐 平台</text>
+          <text class="kv-val platform-tag">{{parseResult.platform}}</text>
+        </view>
         <view class="kv-row">
           <text class="kv-key">✅ 状态</text>
           <text class="kv-val success-txt">解析成功，已去除水印</text>
         </view>
       </view>
     </view>
+
 
   </view>
 

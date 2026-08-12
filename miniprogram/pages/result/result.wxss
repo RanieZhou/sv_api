@@ -402,3 +402,16 @@ page { background: #F0F4FF; }
 .kv-key { font-size: 26rpx; color: #8A9BB5; min-width: 140rpx; }
 .kv-val { font-size: 26rpx; color: #1A2340; flex: 1; }
 .success-txt { color: #52C41A; font-weight: 600; }
+
+.desc-body {
+  color: #5A6B8A;
+  font-size: 26rpx;
+  line-height: 1.7;
+}
+
+.platform-tag {
+  color: #4A7EE6;
+  font-weight: 600;
+  text-transform: capitalize;
+}
+

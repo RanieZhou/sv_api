@@ -96,15 +96,51 @@ function parseDouyinVideo(shareContent, apiKey = DEFAULT_API_KEY) {
           console.log('解析接口返回:', res);
           
           if (res.statusCode === 200 && res.data && (res.data.code === 200 || res.data.code === 0)) {
-            const d = res.data.data || res.data;
-            const videoUrl = d.url || d.video_url || d.play_url || (d.video_urls && d.video_urls[0]) || '';
+            const raw = res.data;
+            const d = raw.data || raw;
+            const platform = raw.platform || 'unknown';
+
+            // ===== 作者信息（各平台兼容）=====
+            // 抖音/快手/小红书: d.author = {name, id, avatar}
+            // B站: d.auther(拼写), d.avatar, d.user = {name, user_img}
+            // 视频号: d.author = {name, avatar}（无id）
             const authorObj = d.author || {};
-            const authorName = typeof authorObj === 'string' ? authorObj : (authorObj.name || '未知作者');
+            const isAuthorStr = typeof authorObj === 'string';
+            const authorName = isAuthorStr
+              ? authorObj
+              : (authorObj.name || d.auther || d.user?.name || '未知作者');
+            const authorAvatar = isAuthorStr ? '' : (
+              authorObj.avatar || authorObj.avatar_url ||
+              d.avatar || d.user?.user_img || ''
+            );
+            const authorId = isAuthorStr ? '' : String(authorObj.id || authorObj.uid || '');
+
+            // ===== extra 嵌套对象 =====
             const extra = d.extra || {};
             const stats = extra.statistics || {};
             const authorExtra = extra.author_extra || {};
 
-            // 图集模式：提取图片列表（过滤空项）
+            // ===== 互动数据（各平台字段名不同）=====
+            // 抖音: extra.statistics.digg_count / comment_count / collect_count / share_count
+            // 快手: extra.statistics.like_count / comment_count / share_count / play_count
+            // 其他平台暂无
+            const likeCount   = stats.digg_count  || stats.like_count    || 0;
+            const commentCount = stats.comment_count || 0;
+            const collectCount = stats.collect_count || 0;
+            const shareCount   = stats.share_count   || 0;
+
+            // ===== 视频 URL（各平台）=====
+            // B站: d.url 或 d.videos[0].url
+            let videoUrl = d.url || d.video_url || d.play_url || '';
+            if (!videoUrl && d.videos && d.videos.length > 0) {
+              videoUrl = d.videos[0].url || '';
+            }
+            // 视频号: d.url 有时为空字符串，video_backup 里有真实地址
+            // 不做代理（视频号直接下载）
+
+            // ===== 图片列表（各平台）=====
+            // 抖音/小红书/快手: d.images = ['url', ...]
+            // 部分平台: d.images = [{url: '...'}] 形式
             let imgs = [];
             if (d.images && d.images.length > 0) {
               imgs = d.images
@@ -112,73 +148,110 @@ function parseDouyinVideo(shareContent, apiKey = DEFAULT_API_KEY) {
                 .filter(Boolean);
             }
 
-            // 内容类型：video / images
-            const contentType = (imgs.length > 0 && !videoUrl) ? 'images' : (d.type || 'video');
+            // ===== 内容类型 =====
+            // d.type 存在则优先使用
+            // 兜底：有图无视频 → images，有视频 → video
+            let contentType = d.type || '';
+            if (!contentType) {
+              contentType = (imgs.length > 0 && !videoUrl) ? 'images' : 'video';
+            }
+            // 抖音图文类型为 "image"，统一为 "images"
+            if (contentType === 'image') contentType = 'images';
 
-            // 清晰度选项（从 video_backup 提取）
-            const QUALITY_ORDER = ['2160p','1440p','1080p','720p','576p','540p','480p','360p'];
+            // ===== 时长（各平台单位不一致）=====
+            // 抖音: duration 单位毫秒（>1000才需要/1000）
+            // 快手: duration 已是秒
+            // B站: videos[0].duration 秒, durationFormat "00:08:10"
+            let duration = 0;
+            if (d.duration) {
+              duration = d.duration > 1000 ? Math.round(d.duration / 1000) : d.duration;
+            } else if (d.videos && d.videos[0] && d.videos[0].duration) {
+              duration = d.videos[0].duration; // B站已是秒
+            }
+
+            // ===== 清晰度选项（video_backup）=====
+            // 不同平台的 video_backup 格式基本一致，但有些无 format 字段（视频号、快手）
+            const QUALITY_ORDER = ['2160p', '1440p', '1080p', '720p', '576p', '540p', '480p', '360p', '高清', '流畅'];
             let qualityOptions = [];
-            if (d.video_backup && d.video_backup.length > 0) {
-              // 只保留 mp4 格式，按质量分组后取最高码率的
+            const backupList = Array.isArray(d.video_backup) ? d.video_backup : [];
+            if (backupList.length > 0) {
+              // 过滤：排除 dash 格式；无 format 字段的也保留（视频号/快手）
               const qualityMap = {};
-              d.video_backup.forEach(item => {
-                if (item.format !== 'mp4' || !item.url || !item.quality) return;
-                const q = item.quality;
-                if (!qualityMap[q] || item.bit_rate > qualityMap[q].bit_rate) {
-                  qualityMap[q] = item;
+              backupList.forEach(item => {
+                if (!item.url) return;
+                if (item.format && item.format !== 'mp4') return; // 排除 dash
+                const q = item.quality || item.label || '默认';
+                const br = item.bit_rate || 0;
+                if (!qualityMap[q] || br > qualityMap[q].bit_rate) {
+                  qualityMap[q] = { ...item, bit_rate: br };
                 }
               });
-              // 按预设顺序排列
-              qualityOptions = QUALITY_ORDER
-                .filter(q => qualityMap[q])
-                .map(q => ({ label: q, url: qualityMap[q].url, bitRate: qualityMap[q].bit_rate }));
+              // 按预设顺序排，剩余的追加到末尾
+              const ordered = [];
+              QUALITY_ORDER.forEach(q => {
+                if (qualityMap[q]) {
+                  ordered.push({ label: q, url: qualityMap[q].url, bitRate: qualityMap[q].bit_rate });
+                  delete qualityMap[q];
+                }
+              });
+              Object.values(qualityMap).forEach(item => {
+                ordered.push({ label: item.quality || item.label || '其他', url: item.url, bitRate: item.bit_rate });
+              });
+              qualityOptions = ordered;
             }
-            // 如果没有 video_backup，用原始 url 作为唯一选项
             if (qualityOptions.length === 0 && videoUrl) {
               qualityOptions = [{ label: '默认', url: videoUrl, bitRate: 0 }];
             }
 
+            // ===== 话题标签（仅抖音有结构化 hashtags）=====
             const hashtags = (extra.hashtags || []).map(t => t.name || '').filter(Boolean);
 
-            // 背景音乐
+            // ===== 背景音乐（仅抖音）=====
             const music = d.music || {};
 
-            // 发布时间（unix秒 → 格式化）
+            // ===== 发布时间 =====
             const createTimestamp = extra.create_time || 0;
             let createTime = '';
             if (createTimestamp) {
               const dt = new Date(createTimestamp * 1000);
-              createTime = `${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,'0')}-${String(dt.getDate()).padStart(2,'0')}`;
+              const y = dt.getFullYear();
+              const mo = dt.getMonth() + 1 < 10 ? '0' + (dt.getMonth() + 1) : String(dt.getMonth() + 1);
+              const day = dt.getDate() < 10 ? '0' + dt.getDate() : String(dt.getDate());
+              createTime = y + '-' + mo + '-' + day;
             }
 
+            // ===== 描述（小红书的 desc 独立于 title）=====
+            const desc = (d.desc && d.desc !== d.title) ? d.desc : '';
+
             const formattedData = {
+              platform,
               type: contentType,
               title: d.title || d.desc || '短视频作品',
-              // 作者信息
+              desc,
+              // 作者
               author: authorName,
-              authorAvatar: typeof authorObj === 'object' ? (authorObj.avatar || authorObj.avatar_url || '') : '',
-              authorId: typeof authorObj === 'object' ? (String(authorObj.id || authorObj.uid || '')) : '',
+              authorAvatar,
+              authorId,
               followerCount: authorExtra.follower_count || 0,
-              // 媒体资源
-              videoUrl: videoUrl,
+              // 媒体
+              videoUrl,
               cover: d.cover || d.cover_url || '',
               proxyVideoUrl: getProxyVideoUrl(videoUrl),
               images: imgs,
-              // 视频参数
-              duration: d.duration ? Math.round(d.duration / 1000) : 0,
-              size: d.size || 0,
-              // 互动数据（正确路径：extra.statistics）
-              likeCount: stats.digg_count || 0,
-              commentCount: stats.comment_count || 0,
-              collectCount: stats.collect_count || 0,
-              shareCount: stats.share_count || 0,
-              // 附加信息
-              hashtags: hashtags,
+              // 参数
+              duration,
+              // 互动
+              likeCount,
+              commentCount,
+              collectCount,
+              shareCount,
+              // 附加
+              hashtags,
               musicTitle: music.title || '',
               musicAuthor: music.author || '',
-              createTime: createTime,
-              // 清晰度选项
-              qualityOptions: qualityOptions,
+              createTime,
+              // 清晰度
+              qualityOptions,
             };
             
             resolve(formattedData);
