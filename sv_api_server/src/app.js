@@ -10,6 +10,7 @@ import proxyRoutes from './routes/proxy.js';
 import bannersRoutes from './routes/banners.js';
 import systemRoutes from './routes/system.js';
 import uploadRoutes from './routes/upload.js';
+import storeRoutes from './routes/store.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -21,8 +22,9 @@ app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// 2. 静态目录（托管后台管理系统与测试页面）
+// 2. 静态目录（托管后台管理系统与测试页面及售卖商城）
 app.use(express.static(path.join(__dirname, '../public')));
+app.use('/store', express.static(path.join(__dirname, '../../store')));
 
 // 3. 挂载路由
 app.use('/api', parseRoutes);
@@ -31,6 +33,7 @@ app.use('/api', bannersRoutes);
 app.use('/api', systemRoutes);
 app.use('/api', uploadRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/store', storeRoutes);
 
 // 4. 健康检查
 app.get('/health', (req, res) => {

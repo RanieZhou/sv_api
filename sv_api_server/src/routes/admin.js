@@ -307,4 +307,108 @@ router.get('/logs', adminAuth, async (req, res) => {
   }
 });
 
+// 8. 管理员查询所有售卖商城订单
+router.get('/orders', adminAuth, async (req, res) => {
+  try {
+    const page = Math.max(1, parseInt(req.query.page || '1', 10));
+    const pageSize = Math.min(100, Math.max(1, parseInt(req.query.page_size || '20', 10)));
+    const offset = (page - 1) * pageSize;
+    const keyword = (req.query.keyword || '').trim();
+
+    let whereClause = 'WHERE 1=1';
+    const params = [];
+
+    if (keyword) {
+      whereClause += ' AND (order_no LIKE ? OR user_name LIKE ? OR api_key LIKE ? OR package_name LIKE ?)';
+      params.push(`%${keyword}%`, `%${keyword}%`, `%${keyword}%`, `%${keyword}%`);
+    }
+
+    const totalObj = await queryOne(`SELECT COUNT(*) as cnt FROM orders ${whereClause}`, params);
+    const list = await queryAll(
+      `SELECT * FROM orders ${whereClause} ORDER BY id DESC LIMIT ? OFFSET ?`,
+      [...params, pageSize, offset]
+    );
+
+    const formattedList = list.map(item => {
+      let createdDisplay = item.created_at;
+      if (item.created_at) {
+        const d = new Date(item.created_at);
+        if (!isNaN(d.getTime())) {
+          createdDisplay = d.toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai', hour12: false });
+        }
+      }
+      return {
+        ...item,
+        createdDisplay
+      };
+    });
+
+    return res.json({
+      code: 200,
+      msg: 'ok',
+      data: {
+        total: totalObj.cnt || 0,
+        page,
+        page_size: pageSize,
+        list: formattedList,
+      },
+    });
+  } catch (err) {
+    console.error('获取订单列表失败:', err);
+    return res.status(500).json({ code: 500, msg: '获取订单列表失败' });
+  }
+});
+
+// 9. 管理员查询所有售卖商城注册用户
+router.get('/store-users', adminAuth, async (req, res) => {
+  try {
+    const page = Math.max(1, parseInt(req.query.page || '1', 10));
+    const pageSize = Math.min(100, Math.max(1, parseInt(req.query.page_size || '20', 10)));
+    const offset = (page - 1) * pageSize;
+    const keyword = (req.query.keyword || '').trim();
+
+    let whereClause = 'WHERE 1=1';
+    const params = [];
+
+    if (keyword) {
+      whereClause += ' AND (username LIKE ? OR email LIKE ?)';
+      params.push(`%${keyword}%`, `%${keyword}%`);
+    }
+
+    const totalObj = await queryOne(`SELECT COUNT(*) as cnt FROM store_users ${whereClause}`, params);
+    const list = await queryAll(
+      `SELECT id, username, email, created_at FROM store_users ${whereClause} ORDER BY id DESC LIMIT ? OFFSET ?`,
+      [...params, pageSize, offset]
+    );
+
+    const formattedList = list.map(item => {
+      let createdDisplay = item.created_at;
+      if (item.created_at) {
+        const d = new Date(item.created_at);
+        if (!isNaN(d.getTime())) {
+          createdDisplay = d.toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai', hour12: false });
+        }
+      }
+      return {
+        ...item,
+        createdDisplay
+      };
+    });
+
+    return res.json({
+      code: 200,
+      msg: 'ok',
+      data: {
+        total: totalObj.cnt || 0,
+        page,
+        page_size: pageSize,
+        list: formattedList,
+      },
+    });
+  } catch (err) {
+    console.error('获取售卖用户列表失败:', err);
+    return res.status(500).json({ code: 500, msg: '获取用户列表失败' });
+  }
+});
+
 export default router;

@@ -71,6 +71,29 @@ async function initDb() {
         updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
       );
 
+      CREATE TABLE IF NOT EXISTS store_users (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        username TEXT UNIQUE NOT NULL,
+        password TEXT NOT NULL,
+        email TEXT DEFAULT '',
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      );
+
+      CREATE TABLE IF NOT EXISTS orders (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        order_no TEXT UNIQUE NOT NULL,
+        user_id INTEGER NOT NULL DEFAULT 0,
+        user_name TEXT NOT NULL DEFAULT '',
+        package_id TEXT NOT NULL,
+        package_name TEXT NOT NULL,
+        amount REAL NOT NULL DEFAULT 0,
+        quota INTEGER NOT NULL DEFAULT 0,
+        expire_days INTEGER NOT NULL DEFAULT 30,
+        api_key TEXT NOT NULL DEFAULT '',
+        status INTEGER NOT NULL DEFAULT 1,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      );
+
       INSERT OR IGNORE INTO api_keys (api_key, user_name, status, total_quota, used_quota, expire_time, note)
       VALUES (
         'sk_test_00000000000000000000000000000001',
@@ -142,6 +165,37 @@ async function createMySQLTables(pool) {
         \`config_value\` LONGTEXT NOT NULL,
         \`updated_at\` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
         PRIMARY KEY (\`config_key\`)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+    `);
+
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS \`store_users\` (
+        \`id\` INT(11) NOT NULL AUTO_INCREMENT,
+        \`username\` VARCHAR(100) NOT NULL,
+        \`password\` VARCHAR(255) NOT NULL,
+        \`email\` VARCHAR(100) DEFAULT '',
+        \`created_at\` DATETIME DEFAULT CURRENT_TIMESTAMP,
+        PRIMARY KEY (\`id\`),
+        UNIQUE KEY \`uk_username\` (\`username\`)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+    `);
+
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS \`orders\` (
+        \`id\` INT(11) NOT NULL AUTO_INCREMENT,
+        \`order_no\` VARCHAR(64) NOT NULL,
+        \`user_id\` INT(11) NOT NULL DEFAULT 0,
+        \`user_name\` VARCHAR(100) NOT NULL DEFAULT '',
+        \`package_id\` VARCHAR(32) NOT NULL,
+        \`package_name\` VARCHAR(50) NOT NULL,
+        \`amount\` DECIMAL(10, 2) NOT NULL DEFAULT 0.00,
+        \`quota\` INT(11) NOT NULL DEFAULT 0,
+        \`expire_days\` INT(11) NOT NULL DEFAULT 30,
+        \`api_key\` VARCHAR(64) NOT NULL DEFAULT '',
+        \`status\` TINYINT(1) NOT NULL DEFAULT 1,
+        \`created_at\` DATETIME DEFAULT CURRENT_TIMESTAMP,
+        PRIMARY KEY (\`id\`),
+        UNIQUE KEY \`uk_order_no\` (\`order_no\`)
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
     `);
   } catch (err) {

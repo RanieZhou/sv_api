@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>⚡ 短视频 API 官方授权售卖商城</title>
+  <link rel="stylesheet" href="./css/style.css" />
+</head>
+<body>
+  <!-- 导航栏 -->
+  <nav class="navbar">
+    <div class="brand">
+      <span>⚡ SV-API 授权发卡中心</span>
+    </div>
+    <div class="nav-links">
+      <a class="nav-link active" onclick="scrollToSection('packages')">套餐列表</a>
+      <a class="nav-link" id="navMyKeys" onclick="scrollToSection('myKeysSection')" style="display: none;">我的 Key</a>
+      <a class="nav-link" id="navMyOrders" onclick="scrollToSection('myOrdersSection')" style="display: none;">订单历史</a>
+      <span id="userInfoText" style="display: none; color: #a5b4fc; font-weight: 600; font-size: 0.9rem;"></span>
+      <button class="btn-login" id="btnLogin" onclick="openLoginModal()">登录 / 注册</button>
+      <button class="btn-login" id="btnLogout" onclick="logout()" style="display: none; background: rgba(239,68,68,0.2); border: 1px solid rgba(239,68,68,0.4); color: #f87171;">退出</button>
+    </div>
+  </nav>
+
+  <div class="container">
+    <!-- Hero 标题 -->
+    <header class="hero">
+      <h1 class="hero-title">全网短视频 API 授权密钥自助购买</h1>
+      <p class="hero-sub">支持抖音、快手、B站、小红书、微信视频号等多平台解析 · 自动秒级发卡 · 轻松对接去水印小程序</p>
+    </header>
+
+    <!-- 套餐区域 -->
+    <section id="packages">
+      <div class="packages-grid" id="packagesGrid">
+        <!-- 动态渲染套餐 -->
+      </div>
+    </section>
+
+    <!-- 我的 Key 列表 -->
+    <section class="section-card" id="myKeysSection" style="display: none;">
+      <div class="section-title">
+        <span>🔑 我的 API Key 密钥</span>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>API Key 密钥</th>
+              <th>可解析总额度</th>
+              <th>剩余可用额度</th>
+              <th>到期时间 (上海时间)</th>
+              <th>密钥状态</th>
+              <th>操作</th>
+            </tr>
+          </thead>
+          <tbody id="myKeysTable">
+            <!-- 动态渲染 -->
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- 订单历史 -->
+    <section class="section-card" id="myOrdersSection" style="display: none;">
+      <div class="section-title">
+        <span>🛒 我的购买订单历史</span>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>订单编号</th>
+              <th>购买套餐</th>
+              <th>交易金额</th>
+              <th>已发 API Key</th>
+              <th>购买时间</th>
+              <th>订单状态</th>
+            </tr>
+          </thead>
+          <tbody id="myOrdersTable">
+            <!-- 动态渲染 -->
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </div>
+
+  <!-- 登录/注册 模态框 -->
+  <div class="modal-mask" id="authModal">
+    <div class="modal-box">
+      <button class="modal-close" onclick="closeAuthModal()">✕</button>
+      <div class="modal-title" id="authModalTitle">登录商城账号</div>
+      
+      <div class="form-group">
+        <label class="form-label">用户名</label>
+        <input type="text" class="form-input" id="authUsername" placeholder="请输入用户名" />
+      </div>
+      <div class="form-group">
+        <label class="form-label">密码</label>
+        <input type="password" class="form-input" id="authPassword" placeholder="请输入密码" />
+      </div>
+      <div class="form-group" id="emailGroup" style="display: none;">
+        <label class="form-label">电子邮箱 (选填)</label>
+        <input type="email" class="form-input" id="authEmail" placeholder="用于接收订单通知" />
+      </div>
+
+      <button class="btn-buy" id="btnAuthSubmit" onclick="handleAuthSubmit()">登录</button>
+      <div style="text-align: center; margin-top: 1rem;">
+        <a style="color: #818cf8; cursor: pointer; font-size: 0.85rem;" id="toggleAuthModeBtn" onclick="toggleAuthMode()">没有账号？立即免费注册</a>
+      </div>
+    </div>
+  </div>
+
+  <!-- 在线购买/发卡 模态框 -->
+  <div class="modal-mask" id="payModal">
+    <div class="modal-box" style="text-align: center;">
+      <button class="modal-close" onclick="closePayModal()">✕</button>
+      <div class="modal-title" id="payTitle">开通套餐</div>
+      <div style="font-size: 1.8rem; font-weight: 800; color: #38bdf8; margin: 0.5rem 0;" id="payAmount">￥19.9</div>
+      
+      <div class="qr-box">
+        <div style="font-size: 3rem; margin-bottom: 0.5rem;">📱</div>
+        <div style="font-weight: 600; color: #1e293b;">微信 / 支付宝 扫码支付</div>
+        <div class="qr-tip">自动检测支付状态 · 支付成功秒级发卡</div>
+      </div>
+
+      <button class="btn-buy" style="background: linear-gradient(135deg, #10b981, #059669);" onclick="executeBuy()">💳 模拟调起支付成功（自动发卡）</button>
+    </div>
+  </div>
+
+  <script>
+    let token = localStorage.getItem('store_token') || '';
+    let currentUser = null;
+    let authMode = 'login'; // login | register
+    let selectedPackageId = null;
+
+    window.onload = function() {
+      fetchPackages();
+      if (token) {
+        checkProfile();
+      }
+    };
+
+    function scrollToSection(id) {
+      const el = document.getElementById(id);
+      if (el) el.scrollIntoView({ behavior: 'smooth' });
+    }
+
+    // 获取套餐
+    async function fetchPackages() {
+      try {
+        const res = await fetch('/api/store/packages');
+        const json = await res.json();
+        if (json.success && json.data) {
+          renderPackages(json.data);
+        }
+      } catch (e) {
+        console.error('获取套餐失败:', e);
+      }
+    }
+
+    function renderPackages(packages) {
+      const grid = document.getElementById('packagesGrid');
+      grid.innerHTML = packages.map(pkg => `
+        <div class="package-card ${pkg.popular ? 'popular' : ''}">
+          ${pkg.badge ? `<div class="badge">${pkg.badge}</div>` : ''}
+          <div class="pkg-name">${pkg.name}</div>
+          <div class="pkg-price-wrap">
+            <span class="pkg-currency">￥</span>
+            <span class="pkg-price">${pkg.price}</span>
+            <span class="pkg-period">/ 30天</span>
+          </div>
+          <div class="pkg-quota-badge">🚀 额度：${pkg.quotaLabel}</div>
+          <div class="pkg-desc">${pkg.desc}</div>
+          <button class="btn-buy" onclick="openPayModal('${pkg.id}', '${pkg.name}', ${pkg.price})">立即开通自动发卡</button>
+        </div>
+      `).join('');
+    }
+
+    // 用户登录状态处理
+    async function checkProfile() {
+      try {
+        const res = await fetch('/api/store/profile', {
+          headers: { 'Authorization': 'Bearer ' + token }
+        });
+        const json = await res.json();
+        if (json.success && json.data) {
+          currentUser = json.data.user;
+          updateUserUI();
+          loadMyKeys();
+          loadMyOrders();
+        } else {
+          logout();
+        }
+      } catch (e) {
+        logout();
+      }
+    }
+
+    function updateUserUI() {
+      if (currentUser) {
+        document.getElementById('btnLogin').style.display = 'none';
+        document.getElementById('btnLogout').style.display = 'inline-block';
+        document.getElementById('userInfoText').style.display = 'inline-block';
+        document.getElementById('userInfoText').innerText = '👤 ' + currentUser.username;
+        document.getElementById('navMyKeys').style.display = 'inline-block';
+        document.getElementById('navMyOrders').style.display = 'inline-block';
+        document.getElementById('myKeysSection').style.display = 'block';
+        document.getElementById('myOrdersSection').style.display = 'block';
+      }
+    }
+
+    function logout() {
+      token = '';
+      currentUser = null;
+      localStorage.removeItem('store_token');
+      document.getElementById('btnLogin').style.display = 'inline-block';
+      document.getElementById('btnLogout').style.display = 'none';
+      document.getElementById('userInfoText').style.display = 'none';
+      document.getElementById('navMyKeys').style.display = 'none';
+      document.getElementById('navMyOrders').style.display = 'none';
+      document.getElementById('myKeysSection').style.display = 'none';
+      document.getElementById('myOrdersSection').style.display = 'none';
+    }
+
+    // 模态框逻辑
+    function openLoginModal() {
+      authMode = 'login';
+      document.getElementById('authModalTitle').innerText = '登录商城账号';
+      document.getElementById('emailGroup').style.display = 'none';
+      document.getElementById('btnAuthSubmit').innerText = '登录';
+      document.getElementById('toggleAuthModeBtn').innerText = '没有账号？立即免费注册';
+      document.getElementById('authModal').classList.add('show');
+    }
+
+    function closeAuthModal() {
+      document.getElementById('authModal').classList.remove('show');
+    }
+
+    function toggleAuthMode() {
+      if (authMode === 'login') {
+        authMode = 'register';
+        document.getElementById('authModalTitle').innerText = '注册新账号';
+        document.getElementById('emailGroup').style.display = 'block';
+        document.getElementById('btnAuthSubmit').innerText = '注册';
+        document.getElementById('toggleAuthModeBtn').innerText = '已有账号？直接登录';
+      } else {
+        openLoginModal();
+      }
+    }
+
+    async function handleAuthSubmit() {
+      const username = document.getElementById('authUsername').value.trim();
+      const password = document.getElementById('authPassword').value.trim();
+      const email = document.getElementById('authEmail').value.trim();
+
+      if (!username || !password) {
+        alert('请输入用户名和密码');
+        return;
+      }
+
+      const url = authMode === 'login' ? '/api/store/login' : '/api/store/register';
+      try {
+        const res = await fetch(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username, password, email })
+        });
+        const json = await res.json();
+        if (json.success && json.data) {
+          token = json.data.token;
+          localStorage.setItem('store_token', token);
+          currentUser = json.data.user;
+          closeAuthModal();
+          updateUserUI();
+          loadMyKeys();
+          loadMyOrders();
+          alert(authMode === 'login' ? '登录成功！' : '注册成功！');
+        } else {
+          alert(json.message || '操作失败');
+        }
+      } catch (e) {
+        alert('网络请求失败');
+      }
+    }
+
+    function openPayModal(id, name, price) {
+      if (!token || !currentUser) {
+        openLoginModal();
+        return;
+      }
+      selectedPackageId = id;
+      document.getElementById('payTitle').innerText = '开通 ' + name;
+      document.getElementById('payAmount').innerText = '￥' + price;
+      document.getElementById('payModal').classList.add('show');
+    }
+
+    function closePayModal() {
+      document.getElementById('payModal').classList.remove('show');
+    }
+
+    async function executeBuy() {
+      if (!selectedPackageId) return;
+      try {
+        const res = await fetch('/api/store/buy', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer ' + token
+          },
+          body: JSON.stringify({ package_id: selectedPackageId })
+        });
+        const json = await res.json();
+        if (json.success && json.data) {
+          closePayModal();
+          alert('🎉 支付成功！已自动为您发卡：\n\nAPI Key: ' + json.data.apiKey + '\n额度: ' + json.data.quota + '\n到期时间: ' + json.data.expireTime);
+          loadMyKeys();
+          loadMyOrders();
+          scrollToSection('myKeysSection');
+        } else {
+          alert(json.message || '购买失败');
+        }
+      } catch (e) {
+        alert('购买请求失败');
+      }
+    }
+
+    async function loadMyKeys() {
+      try {
+        const res = await fetch('/api/store/my-keys', {
+          headers: { 'Authorization': 'Bearer ' + token }
+        });
+        const json = await res.json();
+        if (json.success && json.data) {
+          const list = json.data;
+          const tbody = document.getElementById('myKeysTable');
+          if (list.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: #94a3b8;">暂无购买生成的 API Key</td></tr>';
+            return;
+          }
+          tbody.innerHTML = list.map(item => `
+            <tr>
+              <td>
+                <span class="code-box">${item.api_key}</span>
+                <button class="btn-copy" onclick="copyText('${item.api_key}')">复制</button>
+              </td>
+              <td>${item.total_quota === -1 ? '不限次数' : item.total_quota + ' 次'}</td>
+              <td style="color: #38bdf8; font-weight: 700;">${item.remainingQuota === '不限次数' ? '不限次数' : item.remainingQuota + ' 次'}</td>
+              <td>${item.expireDisplay}</td>
+              <td>
+                <span class="status-tag ${item.isExpired ? 'expired' : 'active'}">
+                  ${item.isExpired ? '已过期' : '✅ 正常使用'}
+                </span>
+              </td>
+              <td>
+                <button class="btn-copy" onclick="copyText('${item.api_key}')">复制Key</button>
+              </td>
+            </tr>
+          `).join('');
+        }
+      } catch (e) {
+        console.error('加载 Key 失败:', e);
+      }
+    }
+
+    async function loadMyOrders() {
+      try {
+        const res = await fetch('/api/store/my-orders', {
+          headers: { 'Authorization': 'Bearer ' + token }
+        });
+        const json = await res.json();
+        if (json.success && json.data) {
+          const list = json.data;
+          const tbody = document.getElementById('myOrdersTable');
+          if (list.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: #94a3b8;">暂无购买订单记录</td></tr>';
+            return;
+          }
+          tbody.innerHTML = list.map(item => `
+            <tr>
+              <td class="code-box">${item.order_no}</td>
+              <td style="font-weight: 600;">${item.package_name}</td>
+              <td style="color: #4ade80; font-weight: 700;">￥${item.amount}</td>
+              <td class="code-box">${item.api_key}</td>
+              <td>${item.createdDisplay}</td>
+              <td><span class="status-tag active">交易成功</span></td>
+            </tr>
+          `).join('');
+        }
+      } catch (e) {
+        console.error('加载订单失败:', e);
+      }
+    }
+
+    function copyText(txt) {
+      navigator.clipboard.writeText(txt).then(() => {
+        alert('API Key 已复制到剪贴板！');
+      });
+    }
+  </script>
+</body>
+</html>
