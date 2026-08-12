@@ -186,7 +186,7 @@ const rules = {
 const getImageUrl = (imageUrl: string) => {
   if (!imageUrl) return ''
   if (imageUrl.startsWith('http') || imageUrl.startsWith('//')) return imageUrl
-  return imageUrl
+  return imageUrl.startsWith('/') ? imageUrl : '/' + imageUrl
 }
 
 // 处理图片URL输入变化

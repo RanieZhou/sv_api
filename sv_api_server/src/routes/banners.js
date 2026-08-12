@@ -3,12 +3,20 @@ import { queryAll, queryOne, execute } from '../db.js';
 
 const router = express.Router();
 
+function normalizeUrl(url) {
+  if (!url) return '';
+  if (url.startsWith('http://') || url.startsWith('https://') || url.startsWith('//')) {
+    return url;
+  }
+  return url.startsWith('/') ? url : '/' + url;
+}
+
 function formatBanner(b) {
   if (!b) return null;
   return {
     id: b.id,
     title: b.title || '',
-    imageUrl: b.image_url || '',
+    imageUrl: normalizeUrl(b.image_url),
     linkUrl: b.link_url || '',
     sortOrder: b.sort_order || 0,
     isActive: b.is_active === 1 || b.is_active === true,
