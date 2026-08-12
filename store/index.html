@@ -7,90 +7,15 @@
   <link rel="stylesheet" href="./css/style.css" />
 </head>
 <body>
-  <!-- 导航栏 -->
-  <nav class="navbar">
-    <div class="brand">
-      <span>⚡ 云边去水印API 授权发卡中心</span>
-    </div>
-    <div class="nav-links">
-      <a class="nav-link active" onclick="scrollToSection('packages')">套餐列表</a>
-      <a class="nav-link" id="navMyKeys" onclick="scrollToSection('myKeysSection')" style="display: none;">我的 Key</a>
-      <a class="nav-link" id="navMyOrders" onclick="scrollToSection('myOrdersSection')" style="display: none;">订单历史</a>
-      <span id="userInfoText" style="display: none; color: #a5b4fc; font-weight: 600; font-size: 0.9rem;"></span>
-      <button class="btn-login" id="btnLogin" onclick="openLoginModal()">登录 / 注册</button>
-      <button class="btn-login" id="btnLogout" onclick="logout()" style="display: none; background: rgba(239,68,68,0.2); border: 1px solid rgba(239,68,68,0.4); color: #f87171;">退出</button>
-    </div>
-  </nav>
-
-  <div class="container">
-    <!-- Hero 标题 -->
-    <header class="hero">
-      <h1 class="hero-title">全网短视频 API 授权密钥自助购买</h1>
-      <p class="hero-sub">支持抖音、快手、B站、小红书、微信视频号等多平台解析 · 自动秒级发卡 · 轻松对接去水印小程序</p>
-    </header>
-
-    <!-- 套餐区域 -->
-    <section id="packages">
-      <div class="packages-grid" id="packagesGrid">
-        <!-- 动态渲染套餐 -->
+  <!-- 1. 未登录状态：独立居中登录/注册卡片 -->
+  <div id="guestLoginSection" class="guest-login-wrapper">
+    <div class="guest-login-card">
+      <div class="title-box">
+        <div class="logo-icon">⚡</div>
+        <div class="main-title">云边去水印API 授权发卡中心</div>
+        <div class="sub-title">短视频解析密钥自助发卡与管理系统</div>
       </div>
-    </section>
 
-    <!-- 我的 Key 列表 -->
-    <section class="section-card" id="myKeysSection" style="display: none;">
-      <div class="section-title">
-        <span>🔑 我的 API Key 密钥</span>
-      </div>
-      <div class="table-wrap">
-        <table>
-          <thead>
-            <tr>
-              <th>API Key 密钥</th>
-              <th>可解析总额度</th>
-              <th>剩余可用额度</th>
-              <th>到期时间 (上海时间)</th>
-              <th>密钥状态</th>
-              <th>操作</th>
-            </tr>
-          </thead>
-          <tbody id="myKeysTable">
-            <!-- 动态渲染 -->
-          </tbody>
-        </table>
-      </div>
-    </section>
-
-    <!-- 订单历史 -->
-    <section class="section-card" id="myOrdersSection" style="display: none;">
-      <div class="section-title">
-        <span>🛒 我的购买订单历史</span>
-      </div>
-      <div class="table-wrap">
-        <table>
-          <thead>
-            <tr>
-              <th>订单编号</th>
-              <th>购买套餐</th>
-              <th>交易金额</th>
-              <th>已发 API Key</th>
-              <th>购买时间</th>
-              <th>订单状态</th>
-            </tr>
-          </thead>
-          <tbody id="myOrdersTable">
-            <!-- 动态渲染 -->
-          </tbody>
-        </table>
-      </div>
-    </section>
-  </div>
-
-  <!-- 登录/注册 模态框 -->
-  <div class="modal-mask" id="authModal">
-    <div class="modal-box">
-      <button class="modal-close" onclick="closeAuthModal()">✕</button>
-      <div class="modal-title" id="authModalTitle">登录商城账号</div>
-      
       <div class="form-group">
         <label class="form-label">用户名</label>
         <input type="text" class="form-input" id="authUsername" placeholder="请输入用户名" />
@@ -111,10 +36,90 @@
         </div>
       </div>
 
-      <button class="btn-buy" id="btnAuthSubmit" onclick="handleAuthSubmit()">登录</button>
-      <div style="text-align: center; margin-top: 1rem;">
-        <a style="color: #818cf8; cursor: pointer; font-size: 0.85rem;" id="toggleAuthModeBtn" onclick="toggleAuthMode()">没有账号？立即免费注册</a>
+      <button class="btn-buy" id="btnAuthSubmit" onclick="handleAuthSubmit()" style="width: 100%; margin-top: 0.5rem;">登录</button>
+      <div style="text-align: center; margin-top: 1.25rem;">
+        <a style="color: #818cf8; cursor: pointer; font-size: 0.85rem;" id="toggleAuthModeBtn" onclick="toggleAuthMode()">没有账号？点击免费注册</a>
       </div>
+    </div>
+  </div>
+
+  <!-- 2. 已登录状态：完整发卡商城界面 -->
+  <div id="mainAppSection" style="display: none;">
+    <!-- 导航栏 -->
+    <nav class="navbar">
+      <div class="brand">
+        <span>⚡ 云边去水印API 授权发卡中心</span>
+      </div>
+      <div class="nav-links">
+        <a class="nav-link active" onclick="scrollToSection('packages')">套餐列表</a>
+        <a class="nav-link" id="navMyKeys" onclick="scrollToSection('myKeysSection')">我的 Key</a>
+        <a class="nav-link" id="navMyOrders" onclick="scrollToSection('myOrdersSection')">订单历史</a>
+        <span id="userInfoText" style="color: #a5b4fc; font-weight: 600; font-size: 0.9rem;"></span>
+        <button class="btn-login" id="btnLogout" onclick="logout()" style="background: rgba(239,68,68,0.2); border: 1px solid rgba(239,68,68,0.4); color: #f87171;">退出登录</button>
+      </div>
+    </nav>
+
+    <div class="container">
+      <!-- Hero 标题 -->
+      <header class="hero">
+        <h1 class="hero-title">全网短视频 API 授权密钥自助购买</h1>
+        <p class="hero-sub">支持抖音、快手、B站、小红书、微信视频号等多平台解析 · 自动秒级发卡 · 轻松对接去水印小程序</p>
+      </header>
+
+      <!-- 套餐区域 -->
+      <section id="packages">
+        <div class="packages-grid" id="packagesGrid">
+          <!-- 动态渲染套餐 -->
+        </div>
+      </section>
+
+      <!-- 我的 Key 列表 -->
+      <section class="section-card" id="myKeysSection">
+        <div class="section-title">
+          <span>🔑 我的 API Key 密钥</span>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>API Key 密钥</th>
+                <th>可解析总额度</th>
+                <th>剩余可用额度</th>
+                <th>到期时间 (上海时间)</th>
+                <th>密钥状态</th>
+                <th>操作</th>
+              </tr>
+            </thead>
+            <tbody id="myKeysTable">
+              <!-- 动态渲染 -->
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- 订单历史 -->
+      <section class="section-card" id="myOrdersSection">
+        <div class="section-title">
+          <span>🛒 我的购买订单历史</span>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>订单编号</th>
+                <th>购买套餐</th>
+                <th>交易金额</th>
+                <th>已发 API Key</th>
+                <th>购买时间</th>
+                <th>订单状态</th>
+              </tr>
+            </thead>
+            <tbody id="myOrdersTable">
+              <!-- 动态渲染 -->
+            </tbody>
+          </table>
+        </div>
+      </section>
     </div>
   </div>
 
@@ -222,14 +227,12 @@
 
     function updateUserUI() {
       if (currentUser) {
-        document.getElementById('btnLogin').style.display = 'none';
-        document.getElementById('btnLogout').style.display = 'inline-block';
-        document.getElementById('userInfoText').style.display = 'inline-block';
+        document.getElementById('guestLoginSection').style.display = 'none';
+        document.getElementById('mainAppSection').style.display = 'block';
         document.getElementById('userInfoText').innerText = '👤 ' + currentUser.username;
-        document.getElementById('navMyKeys').style.display = 'inline-block';
-        document.getElementById('navMyOrders').style.display = 'inline-block';
-        document.getElementById('myKeysSection').style.display = 'block';
-        document.getElementById('myOrdersSection').style.display = 'block';
+      } else {
+        document.getElementById('guestLoginSection').style.display = 'flex';
+        document.getElementById('mainAppSection').style.display = 'none';
       }
     }
 
@@ -237,38 +240,20 @@
       token = '';
       currentUser = null;
       localStorage.removeItem('store_token');
-      document.getElementById('btnLogin').style.display = 'inline-block';
-      document.getElementById('btnLogout').style.display = 'none';
-      document.getElementById('userInfoText').style.display = 'none';
-      document.getElementById('navMyKeys').style.display = 'none';
-      document.getElementById('navMyOrders').style.display = 'none';
-      document.getElementById('myKeysSection').style.display = 'none';
-      document.getElementById('myOrdersSection').style.display = 'none';
-    }
-
-    // 模态框逻辑
-    function openLoginModal() {
-      authMode = 'login';
-      document.getElementById('authModalTitle').innerText = '登录商城账号';
-      document.getElementById('emailGroup').style.display = 'none';
-      document.getElementById('btnAuthSubmit').innerText = '登录';
-      document.getElementById('toggleAuthModeBtn').innerText = '没有账号？立即免费注册';
-      document.getElementById('authModal').classList.add('show');
-    }
-
-    function closeAuthModal() {
-      document.getElementById('authModal').classList.remove('show');
+      updateUserUI();
     }
 
     function toggleAuthMode() {
       if (authMode === 'login') {
         authMode = 'register';
-        document.getElementById('authModalTitle').innerText = '注册新账号';
         document.getElementById('emailGroup').style.display = 'block';
-        document.getElementById('btnAuthSubmit').innerText = '注册';
+        document.getElementById('btnAuthSubmit').innerText = '注册并登录';
         document.getElementById('toggleAuthModeBtn').innerText = '已有账号？直接登录';
       } else {
-        openLoginModal();
+        authMode = 'login';
+        document.getElementById('emailGroup').style.display = 'none';
+        document.getElementById('btnAuthSubmit').innerText = '登录';
+        document.getElementById('toggleAuthModeBtn').innerText = '没有账号？点击免费注册';
       }
     }
 
@@ -357,7 +342,6 @@
           token = json.data.token;
           localStorage.setItem('store_token', token);
           currentUser = json.data.user;
-          closeAuthModal();
           updateUserUI();
           loadMyKeys();
           loadMyOrders();
@@ -377,7 +361,8 @@
 
     function openPayModal(id, name, price) {
       if (!token || !currentUser) {
-        openLoginModal();
+        alert('请先登录商城账号');
+        logout();
         return;
       }
       selectedPackageId = id;

@@ -399,3 +399,56 @@ td {
   font-size: 1.25rem;
   cursor: pointer;
 }
+
+/* 未登录居中登录卡片 */
+.guest-login-wrapper {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+}
+
+.guest-login-card {
+  width: 100%;
+  max-width: 440px;
+  background: var(--card-bg);
+  backdrop-filter: blur(16px);
+  border: 1px solid var(--card-border);
+  border-radius: 1.25rem;
+  padding: 2.5rem 2rem;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+}
+
+.guest-login-card .title-box {
+  text-align: center;
+  margin-bottom: 2rem;
+}
+
+.guest-login-card .logo-icon {
+  width: 60px;
+  height: 60px;
+  margin: 0 auto 1rem auto;
+  background: linear-gradient(135deg, #38bdf8, #818cf8);
+  border-radius: 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.75rem;
+  color: #fff;
+  box-shadow: 0 10px 20px rgba(56, 189, 248, 0.3);
+}
+
+.guest-login-card .main-title {
+  font-size: 1.4rem;
+  font-weight: 800;
+  background: linear-gradient(90deg, #38bdf8, #818cf8);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.guest-login-card .sub-title {
+  font-size: 0.85rem;
+  color: var(--text-sub);
+  margin-top: 0.35rem;
+}
