@@ -267,11 +267,19 @@ router.post('/create-alipay-order', storeAuth, async (req, res) => {
     const result = await alipaySdk.exec('alipay.trade.precreate', {
       bizContent: {
         out_trade_no: orderNo,
+    const reqHost = req.get('host') || 'shortvideo.aihubzone.cn';
+    const protocol = req.protocol === 'https' || req.get('x-forwarded-proto') === 'https' ? 'https' : 'http';
+    const notifyUrl = `${protocol}://${reqHost}/api/store/alipay-notify`;
+
+    const result = await alipaySdk.exec('alipay.trade.precreate', {
+      bizContent: {
+        out_trade_no: orderNo,
         total_amount: pkg.price.toFixed(2),
         subject: `云边去水印API ${pkg.name}`,
         body: `短视频解析API授权 - ${pkg.name} (${pkg.quotaLabel})`,
         timeout_express: '10m',
       },
+      notifyUrl: notifyUrl
     });
 
     const qrCode = result?.qrCode || result?.qr_code || result?.alipayTradePrecreateResponse?.qrCode || result?.alipay_trade_precreate_response?.qr_code;
@@ -297,7 +305,52 @@ router.post('/create-alipay-order', storeAuth, async (req, res) => {
   }
 });
 
-// 6. 轮询订单支付状态
+/**
+ * 订单支付成功后自动发卡生成 API Key
+ */
+async function issueKeyForOrder(order) {
+  if (!order) return null;
+  if (order.pay_status === 1 && order.api_key) return order.api_key;
+
+  try {
+    const apiKey = 'sk_live_' + crypto.randomBytes(16).toString('hex');
+    const totalQuota = Number(order.quota) || 1000;
+    const expireDays = Number(order.expire_days) || 30;
+
+    let expireTimeStr = null;
+    if (expireDays > 0) {
+      const expireDate = new Date(Date.now() + expireDays * 24 * 3600 * 1000);
+      expireTimeStr = expireDate.toISOString().slice(0, 19).replace('T', ' ');
+    }
+
+    try {
+      await execute(
+        `INSERT INTO api_keys (api_key, user_name, status, total_quota, used_quota, expire_time, note, created_at)
+         VALUES (?, ?, 1, ?, 0, ?, ?, NOW())`,
+        [apiKey, order.user_name || 'store_buyer', totalQuota, expireTimeStr, `发卡商城购买: 订单 ${order.order_no}`]
+      );
+    } catch (dbErr) {
+      await execute(
+        `INSERT INTO api_keys (api_key, user_name, status, total_quota, used_quota, expire_time, note, created_at)
+         VALUES (?, ?, 1, ?, 0, ?, ?, datetime('now'))`,
+        [apiKey, order.user_name || 'store_buyer', totalQuota, expireTimeStr, `发卡商城购买: 订单 ${order.order_no}`]
+      );
+    }
+
+    await execute(
+      'UPDATE orders SET pay_status = 1, api_key = ? WHERE id = ?',
+      [apiKey, order.id]
+    );
+
+    console.log(`🎉 [Store] 订单 ${order.order_no} 自动完成发卡！生成 Key: ${apiKey}`);
+    return apiKey;
+  } catch (err) {
+    console.error(`[Store] 为订单 ${order.order_no} 生成 API Key 失败:`, err);
+    return null;
+  }
+}
+
+// 6. 轮询订单支付状态 (含主动调用支付宝接口验签/查询 + 自动发卡)
 router.get('/check-order', storeAuth, async (req, res) => {
   try {
     const { order_no } = req.query;
@@ -306,12 +359,38 @@ router.get('/check-order', storeAuth, async (req, res) => {
     }
 
     const order = await queryOne(
-      'SELECT order_no, pay_status, api_key, package_name, amount FROM orders WHERE order_no = ? AND user_id = ?',
+      `SELECT id, order_no, user_id, user_name, package_id, package_name, amount, quota, expire_days, pay_status, api_key
+       FROM orders WHERE order_no = ? AND user_id = ?`,
       [order_no, req.user.id]
     );
 
     if (!order) {
       return res.status(404).json({ code: 404, success: false, message: '订单不存在' });
+    }
+
+    // 如果数据库中状态为 0 (未支付)，主动调用支付宝 API (alipay.trade.query) 校验官方交易状态
+    if (order.pay_status !== 1) {
+      try {
+        const { getAlipayInstance } = await import('../utils/alipayInstance.js');
+        const alipaySdk = await getAlipayInstance();
+        if (alipaySdk) {
+          const queryRes = await alipaySdk.exec('alipay.trade.query', {
+            bizContent: { out_trade_no: order_no }
+          });
+
+          const tradeStatus = queryRes?.tradeStatus || queryRes?.trade_status || queryRes?.alipayTradeQueryResponse?.tradeStatus;
+
+          if (tradeStatus === 'TRADE_SUCCESS' || tradeStatus === 'TRADE_FINISHED') {
+            const issuedKey = await issueKeyForOrder(order);
+            if (issuedKey) {
+              order.pay_status = 1;
+              order.api_key = issuedKey;
+            }
+          }
+        }
+      } catch (queryErr) {
+        // 当交易尚处于待支付阶段时，支付宝 query 接口会报 ACQ.TRADE_NOT_EXIST，属于正常预料中
+      }
     }
 
     return res.json({
@@ -325,7 +404,34 @@ router.get('/check-order', storeAuth, async (req, res) => {
       }
     });
   } catch (err) {
+    console.error('查询订单支付状态失败:', err);
     return res.status(500).json({ code: 500, success: false, message: '查询失败' });
+  }
+});
+
+// 7. 支付宝异步回调通知接口
+router.post('/alipay-notify', async (req, res) => {
+  try {
+    const params = req.body || {};
+    const orderNo = params.out_trade_no;
+    const tradeStatus = params.trade_status;
+
+    console.log(`[Store] 收到支付宝异步通知: orderNo=${orderNo}, tradeStatus=${tradeStatus}`);
+
+    if (orderNo && (tradeStatus === 'TRADE_SUCCESS' || tradeStatus === 'TRADE_FINISHED')) {
+      const order = await queryOne(
+        `SELECT id, order_no, user_id, user_name, package_id, package_name, amount, quota, expire_days, pay_status, api_key
+         FROM orders WHERE order_no = ?`,
+        [orderNo]
+      );
+      if (order && order.pay_status === 0) {
+        await issueKeyForOrder(order);
+      }
+    }
+    return res.send('success');
+  } catch (err) {
+    console.error('[Store] 支付宝异步回调处理异常:', err);
+    return res.send('fail');
   }
 });
 
