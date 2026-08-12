@@ -754,6 +754,13 @@
           <label class="block text-xs font-medium text-slate-300 mb-1">备注说明</label>
           <input type="text" v-model="editForm.note" placeholder="修改备注" class="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-sm text-white" />
         </div>
+        <div class="pt-4 flex justify-end gap-2">
+          <button type="button" @click="editModalVisible = false" class="px-4 py-2 border border-slate-700 rounded-lg text-slate-300 text-sm">取消</button>
+          <button type="submit" class="px-4 py-2 bg-cyan-500 text-slate-950 font-semibold rounded-lg text-sm">保存修改</button>
+        </div>
+      </form>
+    </el-dialog>
+
     <!-- 弹窗：新增 / 编辑商品套餐 -->
     <el-dialog v-model="packageModalVisible" :title="isEditPackage ? '编辑商品套餐' : '添加新商品套餐'" width="550px">
       <form @submit.prevent="submitSavePackage" class="space-y-4 pt-2">
