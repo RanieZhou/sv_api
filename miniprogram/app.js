@@ -5,7 +5,7 @@ App({
     openid: null,
     baseUrl: 'https://shuiyin.lingjing235.cn',
     adWatched: false,
-    adEnabled: false,       // 流量主总开关 (默认由后台接口返回)
+    adEnabled: true,       // 默认开启（本地缓存/远程加载后再同步）
     adConfig: null,
     lastAdWatchTime: 0,
     lastParseResult: null   // 页面间传递解析结果
@@ -17,6 +17,13 @@ App({
     logs.unshift(Date.now())
     wx.setStorageSync('logs', logs)
 
+    // 优先读取本地缓存的广告配置，解决异步网络延迟导致的闪避
+    const cachedConfig = wx.getStorageSync('ad_config')
+    if (cachedConfig) {
+      this.globalData.adConfig = cachedConfig
+      this.globalData.adEnabled = cachedConfig.adEnabled === true || cachedConfig.adEnabled === 'true'
+    }
+
     // 获取用户openid
     this.getOpenId()
 
@@ -26,7 +33,7 @@ App({
     // 检查广告观看状态
     this.checkAdWatchStatus()
 
-    // 从后台获取流量主设置及总开关
+    // 从后台获取最新流量主设置及总开关
     this.fetchAdConfig()
   },
 
@@ -38,9 +45,11 @@ App({
       success: (res) => {
         if (res.statusCode === 200 && res.data && res.data.data) {
           const config = res.data.data
-          this.globalData.adEnabled = !!config.adEnabled
+          const isEnabled = config.adEnabled === true || config.adEnabled === 'true'
+          this.globalData.adEnabled = isEnabled
           this.globalData.adConfig = config
-          console.log('获取流量主配置成功, adEnabled =', this.globalData.adEnabled)
+          wx.setStorageSync('ad_config', config)
+          console.log('获取最新流量主配置成功, adEnabled =', isEnabled, 'rewardedAdId =', config.rewardedAdId)
         }
       },
       fail: (err) => {

@@ -27,6 +27,52 @@ Page({
       })
       this.checkCanParse()
     }
+    // 初始化流量主激励视频广告
+    this.initRewardedAd()
+  },
+
+  // 初始化微信原生激励视频广告
+  initRewardedAd() {
+    const adConfig = app.globalData.adConfig || wx.getStorageSync('ad_config') || {}
+    const adUnitId = (adConfig.rewardedAdId || adConfig.rewardedVideoAdUnitId || '').trim()
+
+    if (wx.createRewardedVideoAd && adUnitId) {
+      try {
+        console.log('正在创建激励视频广告, adUnitId =', adUnitId)
+        const videoAd = wx.createRewardedVideoAd({ adUnitId })
+
+        videoAd.onLoad(() => {
+          console.log('激励视频广告加载成功')
+        })
+
+        videoAd.onError((err) => {
+          console.error('激励视频广告加载失败:', err)
+        })
+
+        videoAd.onClose((res) => {
+          // 用户是否完整观看广告
+          if (res && res.isEnded) {
+            console.log('用户已完整观看广告，给予奖励解锁')
+            if (app.updateAdWatchStatus) {
+              app.updateAdWatchStatus(true)
+            }
+            wx.showToast({ title: '已解锁24小时无限使用！', icon: 'success', duration: 2000 })
+            if (this._pendingAdCallback) {
+              const cb = this._pendingAdCallback
+              this._pendingAdCallback = null
+              cb()
+            }
+          } else {
+            console.log('用户中途关闭广告，不给予奖励')
+            wx.showToast({ title: '需要完整观看广告才能解锁哦', icon: 'none', duration: 2500 })
+          }
+        })
+
+        this._rewardedVideoAd = videoAd
+      } catch (err) {
+        console.error('创建激励视频广告失败:', err)
+      }
+    }
   },
 
   // ===== 输入区逻辑 =====
@@ -160,15 +206,20 @@ Page({
 
   // 通用广告检测及解锁
   _checkAdAndExecute(actionCallback) {
-    // 判断全局流量主总开关是否开启
-    const adEnabled = app.globalData.adEnabled === true
+    const adConfig = app.globalData.adConfig || wx.getStorageSync('ad_config')
+    let adEnabled = app.globalData.adEnabled
 
-    // 若流量主总开关关闭，无需看广告，直接执行保存/下载
-    if (!adEnabled) {
+    if (adConfig && typeof adConfig.adEnabled !== 'undefined') {
+      adEnabled = adConfig.adEnabled === true || adConfig.adEnabled === 'true'
+    }
+
+    // 若流量主总开关明确关闭，直接允许下载
+    if (adEnabled === false) {
       actionCallback()
       return
     }
 
+    // 如果未看过广告，弹出观看解锁提示
     if (!app.globalData.adWatched) {
       wx.showModal({
         title: '解锁无限使用',
@@ -188,20 +239,35 @@ Page({
 
   // 广告播放控制
   showRewardedVideoAd(callback) {
-    wx.showLoading({ title: '广告加载中...', mask: true })
-    
-    // 如果已有广告组件实例
-    if (this._rewardedVideoAd) {
-      wx.hideLoading()
-      this._adCallback = callback
-      this._rewardedVideoAd.show().catch(() => {
-        this._simulateAdWatch(callback)
-      })
-      return
+    this._pendingAdCallback = callback
+
+    if (!this._rewardedVideoAd) {
+      this.initRewardedAd()
     }
 
-    // 开发者体验演示：模拟播放广告 2 秒后解锁
-    this._simulateAdWatch(callback)
+    if (this._rewardedVideoAd) {
+      wx.showLoading({ title: '广告加载中...', mask: true })
+      this._rewardedVideoAd.show()
+        .then(() => {
+          wx.hideLoading()
+        })
+        .catch(() => {
+          // 如果 show 失败，尝试重新 load
+          this._rewardedVideoAd.load()
+            .then(() => {
+              wx.hideLoading()
+              this._rewardedVideoAd.show()
+            })
+            .catch((err) => {
+              console.warn('拉取真实广告失败，自动切换为演示解锁:', err)
+              wx.hideLoading()
+              this._simulateAdWatch(callback)
+            })
+        })
+    } else {
+      // 在微信开发者工具或没有配置真实 Ad ID 时：进行演示解锁体验
+      this._simulateAdWatch(callback)
+    }
   },
 
   _simulateAdWatch(callback) {
