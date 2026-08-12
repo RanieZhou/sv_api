@@ -408,10 +408,10 @@ Page({
   _checkAdAndDownload(videoUrl) {
     if (!app.globalData.adWatched) {
       wx.showModal({
-        title: '观看广告',
-        content: '首次保存视频需要观看一条广告，观看完成后今天内可无限保存视频，是否继续？',
-        confirmText: '继续',
-        cancelText: '取消',
+        title: '解锁无限使用',
+        content: '观看一次完整广告，解锁24小时无限使用',
+        cancelText: '下次再说',
+        confirmText: '观看广告',
         success: (res) => {
           if (res.confirm) {
             // 保存待下载的 URL，广告看完后再用
