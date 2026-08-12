@@ -14,11 +14,21 @@ export async function authenticateKey(req, res, next) {
       req.query.api_key ||
       req.body?.api_key;
 
-    // 2. 严格模式：未显式传递 Key，直接拒绝访问
+    // 2. 如果请求中未显式传 Key，读取小程序后台【接口设置】(system_config: apikey) 中的配置 Key
     if (!apiKey || typeof apiKey !== 'string' || !apiKey.trim()) {
+      const configRow = await queryOne("SELECT config_value FROM system_config WHERE config_key = 'apikey'");
+      if (configRow && configRow.config_value) {
+        try {
+          const parsed = JSON.parse(configRow.config_value);
+          apiKey = (parsed.api_key || parsed.apiKey || '').trim();
+        } catch(e) {}
+      }
+    }
+
+    if (!apiKey) {
       return res.status(401).json({
         code: 401,
-        msg: '未经授权：缺少 api_key 参数，请在请求中传入有效的 API Key 密钥',
+        msg: '未传入 API Key，且小程序后台未配置默认密钥！请管理员在后台【接口设置】中填入有效的 API Key',
         data: null,
       });
     }
