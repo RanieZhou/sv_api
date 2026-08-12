@@ -49,9 +49,10 @@ async function getWeChatAccessToken() {
 /**
  * 微信 msgSecCheck 内容安全检查
  * @param {string} text 待检测文本
+ * @param {string} openid 用户 openid (可选)
  * @returns {Promise<{pass: boolean, errcode: number, errmsg: string, detail?: any}>}
  */
-export async function checkMsgSecurity(text = '') {
+export async function checkMsgSecurity(text = '', openid = '') {
   const content = (text || '').trim();
   if (!content) {
     return { pass: true, errcode: 0, errmsg: 'ok' };
@@ -61,13 +62,29 @@ export async function checkMsgSecurity(text = '') {
 
   if (token) {
     try {
-      const res = await axios.post(
+      let postBody = { content };
+      if (openid) {
+        postBody = { content, version: 2, scene: 1, openid };
+      }
+
+      let res = await axios.post(
         `https://api.weixin.qq.com/wxa/msg_sec_check?access_token=${token}`,
-        { content, version: 2, scene: 1 },
+        postBody,
         { timeout: 8000 }
       );
 
       console.log('[secCheck] 微信 msgSecCheck 检查响应:', JSON.stringify(res.data));
+
+      // 若未提供 openid 或微信返回 40003 (invalid openid)，自动重试 v1 格式 { content }
+      if (res.data && res.data.errcode === 40003) {
+        console.warn('[secCheck] 未提供有效 openid，自动重试 v1 基础文本检测格式');
+        res = await axios.post(
+          `https://api.weixin.qq.com/wxa/msg_sec_check?access_token=${token}`,
+          { content },
+          { timeout: 8000 }
+        );
+        console.log('[secCheck] 微信 v1 msgSecCheck 响应:', JSON.stringify(res.data));
+      }
 
       const result = res.data?.result || {};
       const errcode = res.data?.errcode ?? 0;

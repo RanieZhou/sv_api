@@ -10,7 +10,8 @@ const router = express.Router();
 // 微信内容安全校验对外公开接口 (支持浏览器/小程序直接测试)
 router.all('/sec-check', async (req, res) => {
   const text = req.query.text || req.body?.text || '测试链接';
-  const sec = await checkMsgSecurity(text);
+  const openid = req.query.openid || req.body?.openid || '';
+  const sec = await checkMsgSecurity(text, openid);
   return res.json({
     code: 200,
     success: sec.pass,
