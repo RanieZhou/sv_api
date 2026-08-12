@@ -20,6 +20,7 @@ async function initDb() {
     conn.release();
     mysqlPool = pool;
     console.log('✅ 数据库模式: 已成功连接 MySQL 数据库');
+    await createMySQLTables(pool);
   } catch (err) {
     useSQLite = true;
     console.log('⚡ 本地未检测到 MySQL 服务，已自动启用零配置 SQLite 本地数据库进行测试 (data/local_test.db)');
@@ -54,6 +55,22 @@ async function initDb() {
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP
       );
 
+      CREATE TABLE IF NOT EXISTS banners (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        title TEXT NOT NULL DEFAULT '',
+        image_url TEXT NOT NULL,
+        link_url TEXT DEFAULT '',
+        sort_order INTEGER DEFAULT 0,
+        is_active INTEGER DEFAULT 1,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      );
+
+      CREATE TABLE IF NOT EXISTS system_config (
+        config_key TEXT PRIMARY KEY,
+        config_value TEXT NOT NULL,
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      );
+
       INSERT OR IGNORE INTO api_keys (api_key, user_name, status, total_quota, used_quota, expire_time, note)
       VALUES (
         'sk_test_00000000000000000000000000000001',
@@ -64,9 +81,74 @@ async function initDb() {
         NULL,
         '内置测试 Key，不限次数永不过期'
       );
+
+      INSERT OR IGNORE INTO banners (id, title, image_url, link_url, sort_order, is_active)
+      VALUES 
+      (1, '去水印神器', 'https://p3-pc-sign.douyinpic.com/tos-cn-p-0015c000-ce/owE0NiIQQJgUPrvefRLQfby3kPaUjBAGGDo7Au~tplv-dy-360p.jpeg?lk3s=138a59ce', '', 1, 1),
+      (2, '全平台支持', 'https://p3.douyinpic.com/aweme/100x100/aweme-avatar/tos-cn-i-0813c000-ce_oIDIOuJkIw7B8fwEeCBGeJy7pBALAArgAsESQr.webp?from=327834062', '', 2, 1);
     `);
   }
 }
+
+async function createMySQLTables(pool) {
+  try {
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS \`api_keys\` (
+        \`id\` INT(11) NOT NULL AUTO_INCREMENT,
+        \`api_key\` VARCHAR(64) NOT NULL,
+        \`user_name\` VARCHAR(100) NOT NULL DEFAULT '',
+        \`status\` TINYINT(1) NOT NULL DEFAULT 1,
+        \`total_quota\` INT(11) NOT NULL DEFAULT 10000,
+        \`used_quota\` INT(11) NOT NULL DEFAULT 0,
+        \`qps_limit\` INT(11) NOT NULL DEFAULT 10,
+        \`expire_time\` DATETIME DEFAULT NULL,
+        \`note\` VARCHAR(255) DEFAULT '',
+        \`created_at\` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        \`updated_at\` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        PRIMARY KEY (\`id\`),
+        UNIQUE KEY \`uk_api_key\` (\`api_key\`)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+    `);
+
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS \`api_logs\` (
+        \`id\` BIGINT(20) NOT NULL AUTO_INCREMENT,
+        \`api_key\` VARCHAR(64) NOT NULL,
+        \`target_url\` TEXT,
+        \`ip\` VARCHAR(45) NOT NULL DEFAULT '',
+        \`status_code\` INT(4) NOT NULL DEFAULT 200,
+        \`response_time_ms\` INT(11) NOT NULL DEFAULT 0,
+        \`created_at\` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        PRIMARY KEY (\`id\`)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+    `);
+
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS \`banners\` (
+        \`id\` INT(11) NOT NULL AUTO_INCREMENT,
+        \`title\` VARCHAR(100) NOT NULL DEFAULT '',
+        \`image_url\` TEXT NOT NULL,
+        \`link_url\` TEXT DEFAULT '',
+        \`sort_order\` INT(11) DEFAULT 0,
+        \`is_active\` TINYINT(1) DEFAULT 1,
+        \`created_at\` DATETIME DEFAULT CURRENT_TIMESTAMP,
+        PRIMARY KEY (\`id\`)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+    `);
+
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS \`system_config\` (
+        \`config_key\` VARCHAR(64) NOT NULL,
+        \`config_value\` LONGTEXT NOT NULL,
+        \`updated_at\` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        PRIMARY KEY (\`config_key\`)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+    `);
+  } catch (err) {
+    console.error('MySQL 建表失败:', err.message);
+  }
+}
+
 
 // 立即初始化
 await initDb();
