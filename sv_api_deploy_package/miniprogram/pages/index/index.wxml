@@ -1,0 +1,135 @@
+<!-- 首页 -->
+<view class="container">
+
+  <!-- 轮播图 -->
+  <view class="banner-section" wx:if="{{showBanners && banners.length > 0}}">
+    <swiper class="banner-swiper" indicator-dots="{{true}}" autoplay="{{true}}" interval="{{3000}}" duration="{{500}}" circular="{{true}}">
+      <swiper-item wx:for="{{banners}}" wx:key="id">
+        <image class="banner-image" src="{{item.imageUrl}}" mode="aspectFill" bindtap="onBannerTap" data-url="{{item.linkUrl}}"></image>
+      </swiper-item>
+    </swiper>
+  </view>
+
+  <!-- 滚动通知栏 -->
+  <view class="notice-section" wx:if="{{showNotice && noticeText}}">
+    <view class="notice-bar">
+      <text class="notice-icon">📢</text>
+      <view class="notice-content">
+        <text class="notice-text">{{noticeText}}</text>
+      </view>
+    </view>
+  </view>
+
+  <!-- 主解析卡片 -->
+  <view class="parse-card">
+    <view class="card-header">
+      <text class="card-title">🎬 短视频去水印</text>
+      <text class="card-sub">支持抖音、Bilibili、视频号等平台</text>
+    </view>
+
+    <!-- 文本输入框 -->
+    <view class="input-wrap">
+      <textarea
+        class="url-textarea"
+        placeholder="粘贴视频链接或分享文字，系统自动识别"
+        placeholder-class="textarea-placeholder"
+        value="{{inputUrl}}"
+        bindinput="onUrlInput"
+        auto-height
+        maxlength="2000"
+      ></textarea>
+    </view>
+
+    <!-- 粘贴 / 历史 / 清空 -->
+    <view class="action-row">
+      <button class="action-btn paste-btn" bindtap="pasteUrl">
+        <text class="action-icon">📋</text>
+        <text>粘贴</text>
+      </button>
+      <button class="action-btn history-btn" bindtap="navigateToHistory">
+        <text class="action-icon">🕒</text>
+        <text>历史</text>
+      </button>
+      <button class="action-btn clear-btn" bindtap="clearUrl">
+        <text class="action-icon">🗑️</text>
+        <text>清空</text>
+      </button>
+    </view>
+
+    <!-- 开始解析 -->
+    <button
+      class="extract-btn {{!canParse ? 'disabled' : ''}}"
+      bindtap="parseVideo"
+      disabled="{{!canParse || isLoading}}"
+      loading="{{isLoading}}"
+    >
+      {{isLoading ? '解析中...' : '开始解析'}}
+    </button>
+  </view>
+
+  <!-- 使用教程 (竖直流程) -->
+  <view class="guide-section">
+    <view class="guide-badge-wrap">
+      <text class="guide-badge">三步搞定</text>
+    </view>
+    <view class="section-header">
+      <text class="section-title">使用教程</text>
+    </view>
+
+    <view class="guide-steps">
+      <view class="step-item">
+        <view class="step-icon-wrap">
+          <text class="step-icon">🔗</text>
+        </view>
+        <view class="step-info">
+          <text class="step-title">复制视频链接</text>
+          <text class="step-desc">在抖音、快手等平台打开作品，通过分享复制链接。</text>
+        </view>
+      </view>
+
+      <view class="step-line"></view>
+
+      <view class="step-item">
+        <view class="step-icon-wrap">
+          <text class="step-icon">📋</text>
+        </view>
+        <view class="step-info">
+          <text class="step-title">粘贴并解析</text>
+          <text class="step-desc">回到本小程序，将链接粘贴到输入框。</text>
+        </view>
+      </view>
+
+      <view class="step-line"></view>
+
+      <view class="step-item">
+        <view class="step-icon-wrap">
+          <text class="step-icon">💾</text>
+        </view>
+        <view class="step-info">
+          <text class="step-title">下载保存</text>
+          <text class="step-desc">点击「开始解析」，完成后下载无水印视频或图集。</text>
+        </view>
+      </view>
+    </view>
+  </view>
+
+  <!-- 常见问题 (手风琴) -->
+  <view class="faq-section">
+    <view class="section-header">
+      <text class="section-title">常见问题</text>
+    </view>
+
+    <view class="faq-list">
+      <view class="faq-item {{item.expanded ? 'expanded' : ''}}" wx:for="{{faqList}}" wx:key="id">
+        <view class="faq-header" bindtap="toggleFaq" data-index="{{index}}">
+          <text class="faq-question">{{item.question}}</text>
+          <text class="faq-arrow">{{item.expanded ? '▲' : '▼'}}</text>
+        </view>
+        <view class="faq-body" wx:if="{{item.expanded}}">
+          <text class="faq-answer">{{item.answer}}</text>
+        </view>
+      </view>
+    </view>
+  </view>
+
+</view>

@@ -1,0 +1,1417 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>⚡ 云边去水印API 独立 Key 控制台</title>
+  <script src="https://cdn.jsdelivr.net/npm/vue@3.3.4/dist/vue.global.prod.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/element-plus/dist/index.css" />
+  <script src="https://cdn.jsdelivr.net/npm/element-plus"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+  <style>
+    body {
+      background: #0f172a;
+      color: #f8fafc;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    }
+    .glass-card {
+      background: rgba(30, 41, 59, 0.7);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+  </style>
+</head>
+<body class="min-h-screen">
+  <div id="app">
+    <!-- 登录视图 -->
+    <div v-if="!isLoggedIn" class="min-h-screen flex items-center justify-center p-4">
+      <div class="glass-card w-full max-w-md p-8 rounded-2xl shadow-2xl">
+        <div class="text-center mb-8">
+          <div class="w-16 h-16 bg-gradient-to-tr from-cyan-500 to-indigo-500 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg shadow-cyan-500/20">
+            <i class="fa-solid fa-shield-halved text-2xl text-white"></i>
+          </div>
+          <h1 class="text-2xl font-bold bg-gradient-to-r from-cyan-400 to-indigo-400 bg-clip-text text-transparent">Key 授权核心后台</h1>
+          <p class="text-slate-400 text-sm mt-1">云边去水印API · 独立密钥发卡与控制系统</p>
+        </div>
+
+        <form @submit.prevent="handleLogin" class="space-y-6">
+          <div>
+            <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">管理员密码</label>
+            <input
+              type="password"
+              v-model="loginPassword"
+              placeholder="请输入密码"
+              class="w-full px-4 py-3 bg-slate-900 border border-slate-700 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500 transition-colors"
+              required
+            />
+          </div>
+
+          <button
+            type="submit"
+            :disabled="loginLoading"
+            class="w-full py-3 bg-gradient-to-r from-cyan-500 to-indigo-500 text-white font-semibold rounded-xl hover:opacity-95 transition-all shadow-lg shadow-cyan-500/25 flex items-center justify-center gap-2"
+          >
+            <i v-if="loginLoading" class="fa-solid fa-spinner animate-spin"></i>
+            <span>{{ loginLoading ? '登录中...' : '进入 Key 控制台' }}</span>
+          </button>
+        </form>
+      </div>
+    </div>
+
+    <!-- 主控台界面 -->
+    <div v-else class="min-h-screen flex flex-col">
+      <!-- 顶部导航栏 -->
+      <header class="glass-card sticky top-0 z-40 px-6 py-4 flex items-center justify-between border-b border-slate-800">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 bg-gradient-to-tr from-cyan-500 to-indigo-500 rounded-xl flex items-center justify-center text-white font-bold shadow-md shadow-cyan-500/20">
+            <i class="fa-solid fa-bolt"></i>
+          </div>
+          <div>
+            <h1 class="font-bold text-lg text-white">⚡ 云边去水印API 独立 Key 控制台</h1>
+            <span class="text-xs text-cyan-400 font-mono">v2.0 · 发卡与密钥管控中心</span>
+          </div>
+        </div>
+
+        <!-- Tab 切换 -->
+        <nav class="flex items-center gap-1 bg-slate-900/80 p-1.5 rounded-xl border border-slate-800">
+          <button
+            @click="currentTab = 'dashboard'"
+            :class="['px-4 py-2 rounded-lg text-sm font-medium transition-all flex items-center gap-2', currentTab === 'dashboard' ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/30' : 'text-slate-400 hover:text-white']"
+          >
+            <i class="fa-solid fa-chart-pie"></i> 概览
+          </button>
+          <button
+            @click="currentTab = 'keys'"
+            :class="['px-4 py-2 rounded-lg text-sm font-medium transition-all flex items-center gap-2', currentTab === 'keys' ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/30' : 'text-slate-400 hover:text-white']"
+          >
+            <i class="fa-solid fa-key"></i> Key 管理
+          </button>
+          <button
+            @click="currentTab = 'products'; fetchAdminPackages()"
+            :class="['px-4 py-2 rounded-lg text-sm font-medium transition-all flex items-center gap-2', currentTab === 'products' ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/30' : 'text-slate-400 hover:text-white']"
+          >
+            <i class="fa-solid fa-box-open"></i> 商品管理
+          </button>
+          <button
+            @click="currentTab = 'orders'; fetchOrders()"
+            :class="['px-4 py-2 rounded-lg text-sm font-medium transition-all flex items-center gap-2', currentTab === 'orders' ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/30' : 'text-slate-400 hover:text-white']"
+          >
+            <i class="fa-solid fa-cart-shopping"></i> 商城订单
+          </button>
+          <button
+            @click="currentTab = 'users'; fetchStoreUsers()"
+            :class="['px-4 py-2 rounded-lg text-sm font-medium transition-all flex items-center gap-2', currentTab === 'users' ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/30' : 'text-slate-400 hover:text-white']"
+          >
+            <i class="fa-solid fa-users"></i> 注册买家
+          </button>
+          <button
+            @click="currentTab = 'alipay'; fetchAlipayConfig()"
+            :class="['px-4 py-2 rounded-lg text-sm font-medium transition-all flex items-center gap-2', currentTab === 'alipay' ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/30' : 'text-slate-400 hover:text-white']"
+          >
+            <i class="fa-solid fa-wallet"></i> 支付宝配置
+          </button>
+          <button
+            @click="currentTab = 'email'; fetchEmailConfig()"
+            :class="['px-4 py-2 rounded-lg text-sm font-medium transition-all flex items-center gap-2', currentTab === 'email' ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/30' : 'text-slate-400 hover:text-white']"
+          >
+            <i class="fa-solid fa-envelope"></i> 邮箱配置
+          </button>
+          <button
+            @click="currentTab = 'mpConfig'; fetchMiniprogramConfig()"
+            :class="['px-4 py-2 rounded-lg text-sm font-medium transition-all flex items-center gap-2', currentTab === 'mpConfig' ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/30' : 'text-slate-400 hover:text-white']"
+          >
+            <i class="fa-solid fa-gear"></i> 小程序配置
+          </button>
+          <button
+            @click="currentTab = 'logs'"
+            :class="['px-4 py-2 rounded-lg text-sm font-medium transition-all flex items-center gap-2', currentTab === 'logs' ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/30' : 'text-slate-400 hover:text-white']"
+          >
+            <i class="fa-solid fa-list-check"></i> 调用日志
+          </button>
+        </nav>
+
+        <button @click="logout" class="px-3 py-1.5 text-xs text-slate-400 hover:text-rose-400 border border-slate-800 hover:border-rose-500/30 rounded-lg transition-all flex items-center gap-1.5">
+          <i class="fa-solid fa-right-from-bracket"></i> 退出
+        </button>
+      </header>
+
+      <!-- 主内容区域 -->
+      <main class="flex-1 max-w-7xl w-full mx-auto p-6 space-y-6">
+        <!-- 1. 概览 Dashboard View -->
+        <div v-if="currentTab === 'dashboard'" class="space-y-6">
+          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div class="glass-card p-5 rounded-2xl border-l-4 border-l-cyan-500">
+              <div class="text-slate-400 text-xs font-medium">总发行 Key</div>
+              <div class="text-3xl font-bold text-white mt-2">{{ stats.total_keys }}</div>
+            </div>
+            <div class="glass-card p-5 rounded-2xl border-l-4 border-l-emerald-500">
+              <div class="text-slate-400 text-xs font-medium">生效中 Key</div>
+              <div class="text-3xl font-bold text-white mt-2">{{ stats.active_keys }}</div>
+            </div>
+            <div class="glass-card p-5 rounded-2xl border-l-4 border-l-indigo-500">
+              <div class="text-slate-400 text-xs font-medium">历史解析总调用</div>
+              <div class="text-3xl font-bold text-white mt-2">{{ stats.total_calls }}</div>
+            </div>
+            <div class="glass-card p-5 rounded-2xl border-l-4 border-l-amber-500">
+              <div class="text-slate-400 text-xs font-medium">今日解析调用</div>
+              <div class="text-3xl font-bold text-white mt-2">{{ stats.today_calls }}</div>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div class="glass-card p-6 rounded-2xl lg:col-span-2 space-y-4">
+              <h2 class="text-base font-semibold text-white">近7天解析趋势图</h2>
+              <div id="chart-trend" class="h-64"></div>
+            </div>
+            <div class="glass-card p-6 rounded-2xl space-y-4">
+              <h2 class="text-base font-semibold text-white">请求状态占比</h2>
+              <div id="chart-status" class="h-64"></div>
+            </div>
+          </div>
+
+          <div class="glass-card p-6 rounded-2xl space-y-4">
+            <h2 class="text-base font-semibold text-white">最活跃 Key 排行</h2>
+            <div id="chart-top-keys" class="h-64"></div>
+          </div>
+        </div>
+
+        <!-- 2. Key 管理 View -->
+        <div v-if="currentTab === 'keys'" class="space-y-6">
+          <div class="glass-card p-6 rounded-2xl space-y-4">
+            <div class="flex flex-col md:flex-row gap-4 items-center justify-between">
+              <div class="flex items-center gap-3 w-full md:w-auto">
+                <input
+                  type="text"
+                  v-model="keySearch"
+                  @keyup.enter="fetchKeys"
+                  placeholder="搜索 Key 或客户名称..."
+                  class="px-4 py-2 bg-slate-900 border border-slate-700 rounded-xl text-white placeholder-slate-500 text-sm focus:outline-none focus:border-cyan-500 w-full md:w-64"
+                />
+                <button @click="fetchKeys" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white text-sm font-medium rounded-xl transition-all border border-slate-700">
+                  <i class="fa-solid fa-magnifying-glass"></i> 搜索
+                </button>
+              </div>
+
+              <button @click="openCreateModal" class="w-full md:w-auto px-5 py-2.5 bg-gradient-to-r from-cyan-500 to-indigo-500 text-white font-semibold text-sm rounded-xl hover:opacity-95 transition-all shadow-lg shadow-cyan-500/20 flex items-center justify-center gap-2">
+                <i class="fa-solid fa-plus"></i> 生成新 Key
+              </button>
+            </div>
+
+            <div class="overflow-x-auto">
+              <table class="w-full text-left text-sm border-collapse">
+                <thead>
+                  <tr class="border-b border-slate-800 text-xs text-slate-400 uppercase tracking-wider">
+                    <th class="py-3 px-4">API Key</th>
+                    <th class="py-3 px-4">客户/归属用户</th>
+                    <th class="py-3 px-4">状态</th>
+                    <th class="py-3 px-4">总额度</th>
+                    <th class="py-3 px-4">已使用</th>
+                    <th class="py-3 px-4">到期时间 (上海时间)</th>
+                    <th class="py-3 px-4">备注</th>
+                    <th class="py-3 px-4 text-right">操作</th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-800/60 font-mono text-xs">
+                  <tr v-for="item in keysList" :key="item.id" class="hover:bg-slate-800/30">
+                    <td class="py-3 px-4 font-bold text-cyan-300">
+                      {{ truncateKey(item.api_key) }}
+                      <button @click="copyText(item.api_key)" class="ml-1 text-slate-500 hover:text-cyan-400">
+                        <i class="fa-regular fa-copy"></i>
+                      </button>
+                    </td>
+                    <td class="py-3 px-4 text-slate-200 font-sans font-medium">{{ item.user_name || '-' }}</td>
+                    <td class="py-3 px-4 font-sans">
+                      <span :class="['px-2 py-0.5 rounded text-xs font-semibold', item.status === 1 ? 'bg-emerald-500/20 text-emerald-400' : 'bg-rose-500/20 text-rose-400']">
+                        {{ item.status === 1 ? '启用' : '禁用' }}
+                      </span>
+                    </td>
+                    <td class="py-3 px-4 text-slate-300 font-sans">{{ item.total_quota === -1 ? '不限次数' : item.total_quota }}</td>
+                    <td class="py-3 px-4 text-slate-300 font-sans">{{ item.used_quota }}</td>
+                    <td class="py-3 px-4 text-slate-400 font-sans">{{ formatDate(item.expire_time) }}</td>
+                    <td class="py-3 px-4 text-slate-400 font-sans max-w-xs truncate" :title="item.note">{{ item.note || '-' }}</td>
+                    <td class="py-3 px-4 text-right space-x-2 font-sans">
+                      <button @click="openEditModal(item)" class="text-cyan-400 hover:underline">编辑</button>
+                      <button @click="toggleStatus(item)" class="text-amber-400 hover:underline">{{ item.status === 1 ? '禁用' : '启用' }}</button>
+                      <button @click="deleteKey(item.id)" class="text-rose-400 hover:underline">删除</button>
+                    </td>
+                  </tr>
+                  <tr v-if="keysList.length === 0">
+                    <td colspan="8" class="py-8 text-center text-slate-500 text-sm">暂无数据</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <!-- 分页 -->
+            <div class="flex items-center justify-between pt-4 text-xs text-slate-400">
+              <div>共 {{ keysTotal }} 条记录</div>
+              <div class="flex gap-2">
+                <button :disabled="keyPage <= 1" @click="keyPage--; fetchKeys()" class="px-3 py-1 bg-slate-900 border border-slate-800 text-slate-300 rounded-lg disabled:opacity-40">上一页</button>
+                <button :disabled="keyPage * 20 >= keysTotal" @click="keyPage++; fetchKeys()" class="px-3 py-1 bg-slate-900 border border-slate-800 text-slate-300 rounded-lg disabled:opacity-40">下一页</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 3. 商城订单 View -->
+        <div v-if="currentTab === 'orders'" class="space-y-6">
+          <div class="glass-card p-6 rounded-2xl space-y-4">
+            <div class="flex flex-col md:flex-row gap-4 items-center justify-between">
+              <div class="flex items-center gap-3">
+                <h2 class="text-base font-semibold text-white flex items-center gap-2">
+                  <i class="fa-solid fa-cart-shopping text-cyan-400"></i> 售卖商城订单记录
+                </h2>
+                <span class="text-xs px-2.5 py-1 bg-cyan-500/20 text-cyan-400 rounded-full font-mono">共 {{ ordersTotal }} 笔订单</span>
+              </div>
+
+              <div class="flex items-center gap-2 w-full md:w-auto">
+                <input
+                  type="text"
+                  v-model="ordersSearch"
+                  @keyup.enter="fetchOrders"
+                  placeholder="搜索订单号 / 买家 / Key..."
+                  class="px-3 py-1.5 bg-slate-900 border border-slate-700 rounded-lg text-white placeholder-slate-500 text-xs focus:outline-none focus:border-cyan-500 w-full md:w-64"
+                />
+                <button @click="fetchOrders" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-white text-xs font-medium rounded-lg border border-slate-700">搜索</button>
+              </div>
+            </div>
+
+            <div class="overflow-x-auto">
+              <table class="w-full text-left text-sm border-collapse">
+                <thead>
+                  <tr class="border-b border-slate-800 text-xs text-slate-400 uppercase tracking-wider">
+                    <th class="py-3 px-4">订单编号</th>
+                    <th class="py-3 px-4">买家账号</th>
+                    <th class="py-3 px-4">购买套餐</th>
+                    <th class="py-3 px-4">交易金额</th>
+                    <th class="py-3 px-4">生成的 Key</th>
+                    <th class="py-3 px-4">购买时间 (上海时间)</th>
+                    <th class="py-3 px-4">订单状态</th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-800/60 font-mono text-xs">
+                  <tr v-for="item in ordersList" :key="item.id" class="hover:bg-slate-800/30">
+                    <td class="py-3 px-4 text-cyan-400 font-bold">{{ item.order_no }}</td>
+                    <td class="py-3 px-4 text-white font-sans font-semibold">{{ item.user_name }}</td>
+                    <td class="py-3 px-4"><span class="px-2 py-0.5 bg-indigo-500/20 text-indigo-300 rounded font-semibold text-xs">{{ item.package_name }}</span></td>
+                    <td class="py-3 px-4 font-bold text-emerald-400">￥{{ item.amount }}</td>
+                    <td class="py-3 px-4 text-slate-300">
+                      <span class="bg-slate-900 px-2 py-1 rounded border border-slate-800">{{ item.api_key || '待支付' }}</span>
+                      <button v-if="item.api_key" @click="copyText(item.api_key)" class="ml-2 text-cyan-400 hover:underline">复制</button>
+                    </td>
+                    <td class="py-3 px-4 text-slate-400">{{ item.createdDisplay }}</td>
+                    <td class="py-3 px-4">
+                      <span :class="['px-2 py-0.5 rounded text-xs font-semibold', item.pay_status === 1 ? 'bg-emerald-500/20 text-emerald-400' : 'bg-amber-500/20 text-amber-400']">
+                        {{ item.pay_status === 1 ? '✅ 交易成功' : '⏳ 待支付' }}
+                      </span>
+                    </td>
+                  </tr>
+                  <tr v-if="ordersList.length === 0">
+                    <td colspan="7" class="py-8 text-center text-slate-500 text-sm">暂无商城订单数据</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- 4. 注册买家 View -->
+        <div v-if="currentTab === 'users'" class="space-y-6">
+          <div class="glass-card p-6 rounded-2xl space-y-4">
+            <div class="flex flex-col md:flex-row gap-4 items-center justify-between">
+              <div class="flex items-center gap-3">
+                <h2 class="text-base font-semibold text-white flex items-center gap-2">
+                  <i class="fa-solid fa-users text-cyan-400"></i> 售卖商城注册买家用户
+                </h2>
+                <span class="text-xs px-2.5 py-1 bg-cyan-500/20 text-cyan-400 rounded-full font-mono">共 {{ storeUsersTotal }} 位用户</span>
+              </div>
+
+              <div class="flex items-center gap-2 w-full md:w-auto">
+                <input
+                  type="text"
+                  v-model="storeUsersSearch"
+                  @keyup.enter="fetchStoreUsers"
+                  placeholder="搜索买家账号 / 邮箱..."
+                  class="px-3 py-1.5 bg-slate-900 border border-slate-700 rounded-lg text-white placeholder-slate-500 text-xs focus:outline-none focus:border-cyan-500 w-full md:w-64"
+                />
+                <button @click="fetchStoreUsers" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-white text-xs font-medium rounded-lg border border-slate-700">搜索</button>
+              </div>
+            </div>
+
+            <div class="overflow-x-auto">
+              <table class="w-full text-left text-sm border-collapse">
+                <thead>
+                  <tr class="border-b border-slate-800 text-xs text-slate-400 uppercase tracking-wider">
+                    <th class="py-3 px-4">用户 ID</th>
+                    <th class="py-3 px-4">买家账号</th>
+                    <th class="py-3 px-4">电子邮箱</th>
+                    <th class="py-3 px-4">注册时间 (上海时间)</th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-800/60 font-mono text-xs">
+                  <tr v-for="item in storeUsersList" :key="item.id" class="hover:bg-slate-800/30">
+                    <td class="py-3 px-4 text-slate-500">#{{ item.id }}</td>
+                    <td class="py-3 px-4 font-bold text-white font-sans flex items-center gap-2">
+                      <i class="fa-solid fa-user-circle text-cyan-400 text-base"></i> {{ item.username }}
+                    </td>
+                    <td class="py-3 px-4 text-slate-300 font-sans">{{ item.email || '-' }}</td>
+                    <td class="py-3 px-4 text-slate-400">{{ item.createdDisplay }}</td>
+                  </tr>
+                  <tr v-if="storeUsersList.length === 0">
+                    <td colspan="4" class="py-8 text-center text-slate-500 text-sm">暂无注册买家记录</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- 5. 支付宝配置 View (独占在 Key 后台) -->
+        <div v-if="currentTab === 'alipay'" class="space-y-6">
+          <div class="glass-card p-6 rounded-2xl space-y-6">
+            <div class="flex items-center justify-between border-b border-slate-800 pb-4">
+              <h2 class="text-lg font-bold text-white flex items-center gap-2">
+                <i class="fa-solid fa-wallet text-cyan-400"></i> 支付宝扫码支付秘钥配置
+              </h2>
+              <span :class="['px-3 py-1 rounded-full text-xs font-semibold', alipayForm.configured ? 'bg-emerald-500/20 text-emerald-400' : 'bg-amber-500/20 text-amber-400']">
+                {{ alipayForm.configured ? '✅ 已配置生效' : '⚠️ 暂未配置' }}
+              </span>
+            </div>
+
+            <!-- 表单内容 -->
+            <div class="space-y-5">
+              <div>
+                <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">运行环境</label>
+                <div class="flex items-center gap-4">
+                  <label class="flex items-center gap-2 cursor-pointer">
+                    <input type="radio" v-model="alipayForm.sandbox" :value="true" class="accent-cyan-500" />
+                    <span class="text-sm text-amber-400 font-medium">⚠️ 沙箱测试环境 (测试不扣款)</span>
+                  </label>
+                  <label class="flex items-center gap-2 cursor-pointer">
+                    <input type="radio" v-model="alipayForm.sandbox" :value="false" class="accent-cyan-500" />
+                    <span class="text-sm text-emerald-400 font-medium">✅ 生产正式环境 (真实收款发卡)</span>
+                  </label>
+                </div>
+              </div>
+
+              <div>
+                <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">支付宝 App ID</label>
+                <input
+                  type="text"
+                  v-model="alipayForm.appId"
+                  placeholder="例如：2021000000000000"
+                  class="w-full px-4 py-2.5 bg-slate-900 border border-slate-700 rounded-xl text-white text-sm focus:outline-none focus:border-cyan-500"
+                />
+              </div>
+
+              <div>
+                <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">应用私钥 (RSA2 私钥 PKCS8 格式)</label>
+                <textarea
+                  v-model="alipayForm.privateKey"
+                  rows="4"
+                  placeholder="-----BEGIN PRIVATE KEY-----\nMIIEvQ...\n-----END PRIVATE KEY-----"
+                  class="w-full px-4 py-2.5 bg-slate-900 border border-slate-700 rounded-xl text-white font-mono text-xs focus:outline-none focus:border-cyan-500"
+                ></textarea>
+                <p v-if="alipayForm.configured" class="text-xs text-amber-400 mt-1">• 若保持为 `******` 留空，保存时将继续使用原有私钥</p>
+              </div>
+
+              <div>
+                <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">支付宝公钥</label>
+                <textarea
+                  v-model="alipayForm.alipayPublicKey"
+                  rows="4"
+                  placeholder="MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA..."
+                  class="w-full px-4 py-2.5 bg-slate-900 border border-slate-700 rounded-xl text-white font-mono text-xs focus:outline-none focus:border-cyan-500"
+                ></textarea>
+              </div>
+
+              <div class="pt-2">
+                <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">异步通知地址 (notify_url，只读)</label>
+                <div class="flex gap-2">
+                  <input
+                    type="text"
+                    value="https://shortvideo.aihubzone.cn/api/alipay/notify"
+                    readonly
+                    class="flex-1 px-4 py-2.5 bg-slate-900/60 border border-slate-800 rounded-xl text-slate-400 font-mono text-xs"
+                  />
+                  <button @click="copyText('https://shortvideo.aihubzone.cn/api/alipay/notify')" class="px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-cyan-400 text-xs rounded-xl border border-slate-700">复制</button>
+                </div>
+              </div>
+
+              <div class="pt-4">
+                <button
+                  @click="saveAlipayConfig"
+                  :disabled="alipaySaving"
+                  class="px-6 py-3 bg-gradient-to-r from-cyan-500 to-indigo-500 text-white font-bold rounded-xl shadow-lg shadow-cyan-500/25 hover:opacity-90 transition-all flex items-center gap-2"
+                >
+                  <i v-if="alipaySaving" class="fa-solid fa-spinner animate-spin"></i>
+                  <span>{{ alipaySaving ? '保存中...' : '💾 保存支付宝配置并立即生效' }}</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 6. 邮箱配置 View (用于商城注册验证码) -->
+        <div v-if="currentTab === 'email'" class="space-y-6">
+          <div class="glass-card p-6 rounded-2xl space-y-6">
+            <div class="flex items-center justify-between border-b border-slate-800 pb-4">
+              <h2 class="text-lg font-bold text-white flex items-center gap-2">
+                <i class="fa-solid fa-envelope text-cyan-400"></i> QQ 邮箱发件配置 (商城注册验证码)
+              </h2>
+              <span :class="['px-3 py-1 rounded-full text-xs font-semibold', emailForm.configured ? 'bg-emerald-500/20 text-emerald-400' : 'bg-amber-500/20 text-amber-400']">
+                {{ emailForm.configured ? '✅ 已配置生效' : '⚠️ 暂未配置' }}
+              </span>
+            </div>
+
+            <!-- 说明组件 -->
+            <div class="p-4 bg-cyan-950/40 border border-cyan-800/50 rounded-xl text-xs text-cyan-200 space-y-1.5">
+              <div class="font-bold text-sm text-cyan-400">💡 QQ 邮箱配置指引：</div>
+              <p>1. 登录 QQ 邮箱 (mail.qq.com) → 点击顶部「设置」→ 选择「账户」标签页；</p>
+              <p>2. 找到「POP3/IMAP/SMTP/Exchange/CardDAV/CalDAV服务」选项；</p>
+              <p>3. 开启 <strong>POP3/SMTP服务</strong> 或 <strong>IMAP/SMTP服务</strong>，按提示获取 16 位授权码；</p>
+              <p>4. 在下方填入您的 <strong>QQ 号码</strong> 及获取到的 <strong>16位授权码</strong>，保存后即可发信。</p>
+            </div>
+
+            <!-- 表单内容 -->
+            <div class="space-y-5">
+              <div>
+                <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">发件 QQ 号码</label>
+                <input
+                  type="text"
+                  v-model="emailForm.qqNumber"
+                  placeholder="例如：12345678 或 12345678@qq.com"
+                  class="w-full px-4 py-2.5 bg-slate-900 border border-slate-700 rounded-xl text-white text-sm focus:outline-none focus:border-cyan-500 font-mono"
+                />
+              </div>
+
+              <div>
+                <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">QQ 邮箱 SMTP 授权码</label>
+                <input
+                  type="password"
+                  v-model="emailForm.authCode"
+                  placeholder="例如：abcdefghijklmnop (16位授权码)"
+                  class="w-full px-4 py-2.5 bg-slate-900 border border-slate-700 rounded-xl text-white text-sm focus:outline-none focus:border-cyan-500 font-mono"
+                />
+                <p v-if="emailForm.configured" class="text-xs text-amber-400 mt-1">• 若显示 `******` 保持留空，保存时将继续使用原有授权码</p>
+              </div>
+
+              <div class="pt-4 flex flex-wrap items-center gap-4">
+                <button
+                  @click="saveEmailConfig"
+                  :disabled="emailSaving"
+                  class="px-6 py-3 bg-gradient-to-r from-cyan-500 to-indigo-500 text-white font-bold rounded-xl shadow-lg shadow-cyan-500/25 hover:opacity-90 transition-all flex items-center gap-2"
+                >
+                  <i v-if="emailSaving" class="fa-solid fa-spinner animate-spin"></i>
+                  <span>{{ emailSaving ? '保存中...' : '💾 保存邮箱配置' }}</span>
+                </button>
+
+                <button
+                  @click="openTestEmailModal"
+                  class="px-5 py-3 bg-slate-800 hover:bg-slate-700 text-cyan-400 font-medium rounded-xl border border-slate-700 transition-all flex items-center gap-2 text-sm"
+                >
+                  <i class="fa-solid fa-paper-plane"></i> 发送测试验证码邮件
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 7. 小程序配置 View (用于设置 AppID / AppSecret / 内容安全 msgSecCheck) -->
+        <div v-if="currentTab === 'mpConfig'" class="space-y-6">
+          <div class="glass-card p-6 rounded-2xl space-y-6">
+            <div class="flex items-center justify-between border-b border-slate-800 pb-4">
+              <h2 class="text-lg font-bold text-white flex items-center gap-2">
+                <i class="fa-solid fa-gear text-cyan-400"></i> 小程序 AppID 与 AppSecret 配置
+              </h2>
+              <span :class="['px-3 py-1 rounded-full text-xs font-semibold', mpForm.appId && mpForm.appSecret ? 'bg-emerald-500/20 text-emerald-400' : 'bg-amber-500/20 text-amber-400']">
+                {{ mpForm.appId && mpForm.appSecret ? '✅ 已开启 msgSecCheck 内容安全识别' : '⚠️ 建议填入 AppSecret 开启 msgSecCheck 审核支持' }}
+              </span>
+            </div>
+
+            <!-- 说明组件 -->
+            <div class="p-4 bg-cyan-950/40 border border-cyan-800/50 rounded-xl text-xs text-cyan-200 space-y-1.5">
+              <div class="font-bold text-sm text-cyan-400">💡 微信 msgSecCheck 内容安全说明：</div>
+              <p>1. 前往 <strong>微信公众平台 (mp.weixin.qq.com)</strong> → 点击「开发管理」→「开发设置」；</p>
+              <p>2. 复制小程序的 <strong>AppID</strong> 及生成 <strong>AppSecret</strong>（小程序密钥）；</p>
+              <p>3. 填入下方保存后，系统解析链接时将自动调用微信官方 `msgSecCheck` 过滤敏感词，满足微信审核规范 5.18 要求。</p>
+            </div>
+
+            <!-- 表单内容 -->
+            <div class="space-y-5">
+              <div>
+                <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">小程序 AppID</label>
+                <input
+                  type="text"
+                  v-model="mpForm.appId"
+                  placeholder="例如：wx1234567890abcdef"
+                  class="w-full px-4 py-2.5 bg-slate-900 border border-slate-700 rounded-xl text-white text-sm focus:outline-none focus:border-cyan-500 font-mono"
+                />
+              </div>
+
+              <div>
+                <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">小程序 AppSecret (安全密钥)</label>
+                <input
+                  type="password"
+                  v-model="mpForm.appSecret"
+                  placeholder="例如：abcdef1234567890abcdef1234567890"
+                  class="w-full px-4 py-2.5 bg-slate-900 border border-slate-700 rounded-xl text-white text-sm focus:outline-none focus:border-cyan-500 font-mono"
+                />
+              </div>
+
+              <div>
+                <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">小程序显示名称</label>
+                <input
+                  type="text"
+                  v-model="mpForm.appName"
+                  placeholder="例如：云边去水印"
+                  class="w-full px-4 py-2.5 bg-slate-900 border border-slate-700 rounded-xl text-white text-sm focus:outline-none focus:border-cyan-500"
+                />
+              </div>
+
+              <div>
+                <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">小程序首页滚动通知</label>
+                <input
+                  type="text"
+                  v-model="mpForm.noticeText"
+                  placeholder="例如：欢迎使用短视频无水印解析工具！"
+                  class="w-full px-4 py-2.5 bg-slate-900 border border-slate-700 rounded-xl text-white text-sm focus:outline-none focus:border-cyan-500"
+                />
+              </div>
+
+              <div class="pt-4">
+                <button
+                  @click="saveMiniprogramConfig"
+                  :disabled="mpSaving"
+                  class="px-6 py-3 bg-gradient-to-r from-cyan-500 to-indigo-500 text-white font-bold rounded-xl shadow-lg shadow-cyan-500/25 hover:opacity-90 transition-all flex items-center gap-2"
+                >
+                  <i v-if="mpSaving" class="fa-solid fa-spinner animate-spin"></i>
+                  <span>{{ mpSaving ? '保存中...' : '💾 保存小程序配置' }}</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 3. 商品/套餐管理 View -->
+        <div v-if="currentTab === 'products'" class="space-y-6">
+          <div class="glass-card p-6 rounded-2xl space-y-4">
+            <div class="flex items-center justify-between border-b border-slate-800 pb-4">
+              <div>
+                <h2 class="text-base font-semibold text-white flex items-center gap-2">
+                  <i class="fa-solid fa-box-open text-cyan-400"></i> 发卡商城商品套餐管理
+                </h2>
+                <p class="text-xs text-slate-400 mt-1">自由配置发卡前端售卖的套餐商品、价格、解析额度及推荐角标</p>
+              </div>
+              <button
+                @click="openAddPackageModal"
+                class="px-4 py-2 bg-gradient-to-r from-cyan-500 to-indigo-500 hover:opacity-90 text-white font-semibold rounded-xl text-xs shadow-lg shadow-cyan-500/20 transition-all flex items-center gap-1.5"
+              >
+                <i class="fa-solid fa-plus"></i> 添加新商品套餐
+              </button>
+            </div>
+
+            <!-- 商品套餐表格 -->
+            <div class="overflow-x-auto">
+              <table class="w-full text-left text-sm border-collapse">
+                <thead>
+                  <tr class="border-b border-slate-800 text-xs text-slate-400 uppercase tracking-wider">
+                    <th class="py-3 px-4">套餐名称与描述</th>
+                    <th class="py-3 px-4">售卖价格</th>
+                    <th class="py-3 px-4">包含解析额度</th>
+                    <th class="py-3 px-4">有效时长</th>
+                    <th class="py-3 px-4">角标与推荐</th>
+                    <th class="py-3 px-4">售卖状态</th>
+                    <th class="py-3 px-4 text-right">操作</th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-800/60 text-xs">
+                  <tr v-for="(item, idx) in adminPackagesList" :key="item.id" class="hover:bg-slate-800/30">
+                    <td class="py-3 px-4">
+                      <div class="font-bold text-white text-sm">{{ item.name }}</div>
+                      <div class="text-slate-400 text-xs mt-0.5">{{ item.desc }}</div>
+                      <div class="text-slate-500 font-mono text-[10px]">ID: {{ item.id }}</div>
+                    </td>
+                    <td class="py-3 px-4 font-bold text-emerald-400 text-sm">￥{{ item.price }}</td>
+                    <td class="py-3 px-4 text-cyan-300 font-semibold">{{ item.quotaLabel || (item.quota === -1 ? '无限次' : item.quota + ' 次/月') }}</td>
+                    <td class="py-3 px-4 text-slate-300">{{ item.expireDays }} 天</td>
+                    <td class="py-3 px-4 space-x-1">
+                      <span v-if="item.badge" class="px-2 py-0.5 bg-indigo-500/20 border border-indigo-500/30 text-indigo-300 rounded text-[11px] font-medium">
+                        {{ item.badge }}
+                      </span>
+                      <span v-if="item.popular" class="px-2 py-0.5 bg-amber-500/20 border border-amber-500/30 text-amber-300 rounded text-[11px] font-bold">
+                        🔥 热门推荐
+                      </span>
+                    </td>
+                    <td class="py-3 px-4">
+                      <span :class="['px-2.5 py-1 rounded-full text-xs font-semibold', (item.status === 1 || item.status === '1' || item.status === true) ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'bg-slate-800 text-slate-400']">
+                        {{ (item.status === 1 || item.status === '1' || item.status === true) ? '已上架' : '已下架' }}
+                      </span>
+                    </td>
+                    <td class="py-3 px-4 text-right space-x-2">
+                      <button @click="openEditPackageModal(item, idx)" class="text-cyan-400 hover:text-cyan-300 font-medium">编辑</button>
+                      <button @click="togglePackageStatus(idx)" :class="[(item.status === 1 || item.status === '1' || item.status === true) ? 'text-amber-400 hover:text-amber-300' : 'text-emerald-400 hover:text-emerald-300', 'font-medium']">
+                        {{ (item.status === 1 || item.status === '1' || item.status === true) ? '下架' : '上架' }}
+                      </button>
+                      <button @click="deletePackageItem(idx)" class="text-rose-400 hover:text-rose-300 font-medium">删除</button>
+                    </td>
+                  </tr>
+                  <tr v-if="adminPackagesList.length === 0">
+                    <td colspan="7" class="py-8 text-center text-slate-500 text-sm">暂无商品套餐数据</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- 6. 调用日志 View -->
+        <div v-if="currentTab === 'logs'" class="space-y-6">
+          <div class="glass-card p-6 rounded-2xl space-y-4">
+            <div class="flex items-center justify-between">
+              <h2 class="text-base font-semibold text-white">实时解析调用日志</h2>
+              <button @click="fetchLogs" class="text-xs text-cyan-400 hover:underline flex items-center gap-1">
+                <i class="fa-solid fa-rotate-right"></i> 刷新日志
+              </button>
+            </div>
+
+            <div class="overflow-x-auto">
+              <table class="w-full text-left text-sm border-collapse">
+                <thead>
+                  <tr class="border-b border-slate-800 text-xs text-slate-400 uppercase tracking-wider">
+                    <th class="py-3 px-4">时间</th>
+                    <th class="py-3 px-4">API Key</th>
+                    <th class="py-3 px-4">解析目标 URL</th>
+                    <th class="py-3 px-4">客户端 IP</th>
+                    <th class="py-3 px-4">状态码</th>
+                    <th class="py-3 px-4">耗时</th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-800/60 font-mono text-xs">
+                  <tr v-for="item in logsList" :key="item.id" class="hover:bg-slate-800/30">
+                    <td class="py-3 px-4 text-slate-400">{{ formatDate(item.created_at) }}</td>
+                    <td class="py-3 px-4 text-cyan-300">{{ truncateKey(item.api_key) }}</td>
+                    <td class="py-3 px-4 text-slate-300 max-w-xs truncate" :title="item.target_url">{{ item.target_url }}</td>
+                    <td class="py-3 px-4 text-slate-400">{{ item.ip }}</td>
+                    <td class="py-3 px-4">
+                      <span :class="['px-2 py-0.5 rounded font-bold', item.status_code === 200 ? 'bg-emerald-500/20 text-emerald-400' : 'bg-rose-500/20 text-rose-400']">
+                        {{ item.status_code }}
+                      </span>
+                    </td>
+                    <td class="py-3 px-4 text-slate-400">{{ item.response_time_ms }} ms</td>
+                  </tr>
+                  <tr v-if="logsList.length === 0">
+                    <td colspan="6" class="py-8 text-center text-slate-500 text-sm">暂无日志数据</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </main>
+    </div>
+
+    <!-- 弹窗：生成新 Key -->
+    <el-dialog v-model="createModalVisible" title="生成新 API Key" width="500px">
+      <form @submit.prevent="submitCreateKey" class="space-y-4 pt-2">
+        <div>
+          <label class="block text-xs font-medium text-slate-300 mb-1">客户 / 归属用户名称</label>
+          <input type="text" v-model="createForm.user_name" placeholder="例如: 某某客户" class="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-sm text-white" required />
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-slate-300 mb-1">可解析总额度 (-1 表示无限次数)</label>
+          <input type="number" v-model.number="createForm.total_quota" class="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-sm text-white" required />
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-slate-300 mb-1">有效天数 (0 表示不过期)</label>
+          <input type="number" v-model.number="createForm.expire_days" class="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-sm text-white" required />
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-slate-300 mb-1">备注说明</label>
+          <input type="text" v-model="createForm.note" placeholder="例如: 线下手动开通" class="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-sm text-white" />
+        </div>
+        <div class="pt-4 flex justify-end gap-2">
+          <button type="button" @click="createModalVisible = false" class="px-4 py-2 border border-slate-700 rounded-lg text-slate-300 text-sm">取消</button>
+          <button type="submit" class="px-4 py-2 bg-cyan-500 text-slate-950 font-semibold rounded-lg text-sm">确定生成</button>
+        </div>
+      </form>
+    </el-dialog>
+
+    <!-- 弹窗：编辑 / 续费 API Key -->
+    <el-dialog v-model="editModalVisible" title="编辑 / 续费 API Key" width="500px">
+      <form @submit.prevent="submitEditKey" class="space-y-4 pt-2">
+        <div>
+          <label class="block text-xs font-medium text-slate-300 mb-1">增加额度次数 (填正数增加，0不改)</label>
+          <input type="number" v-model.number="editForm.add_quota" placeholder="例: 增加 5000 次" class="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-sm text-white" />
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-slate-300 mb-1">延长有效天数 (从今天起顺延 N 天)</label>
+          <input type="number" v-model.number="editForm.expire_days" placeholder="例: 顺延 30 天" class="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-sm text-white" />
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-slate-300 mb-1">备注说明</label>
+          <input type="text" v-model="editForm.note" placeholder="修改备注" class="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-sm text-white" />
+        </div>
+        <div class="pt-4 flex justify-end gap-2">
+          <button type="button" @click="editModalVisible = false" class="px-4 py-2 border border-slate-700 rounded-lg text-slate-300 text-sm">取消</button>
+          <button type="submit" class="px-4 py-2 bg-cyan-500 text-slate-950 font-semibold rounded-lg text-sm">保存修改</button>
+        </div>
+      </form>
+    </el-dialog>
+
+    <!-- 弹窗：新增 / 编辑商品套餐 -->
+    <el-dialog v-model="packageModalVisible" :title="isEditPackage ? '编辑商品套餐' : '添加新商品套餐'" width="550px">
+      <form @submit.prevent="submitSavePackage" class="space-y-4 pt-2">
+        <div class="grid grid-cols-2 gap-4">
+          <div>
+            <label class="block text-xs font-medium text-slate-300 mb-1">套餐标识 (ID)</label>
+            <input type="text" v-model="packageForm.id" :disabled="isEditPackage" placeholder="例如: bronze" class="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-sm text-white disabled:opacity-50" required />
+          </div>
+          <div>
+            <label class="block text-xs font-medium text-slate-300 mb-1">套餐名称</label>
+            <input type="text" v-model="packageForm.name" placeholder="例如: 青铜套餐" class="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-sm text-white" required />
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-4">
+          <div>
+            <label class="block text-xs font-medium text-slate-300 mb-1">售价 (元)</label>
+            <input type="number" step="0.01" v-model.number="packageForm.price" placeholder="例如: 19.9" class="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-sm text-white" required />
+          </div>
+          <div>
+            <label class="block text-xs font-medium text-slate-300 mb-1">解析额度次数 (-1 为无限次)</label>
+            <input type="number" v-model.number="packageForm.quota" placeholder="例如: 1000" class="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-sm text-white" required />
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-4">
+          <div>
+            <label class="block text-xs font-medium text-slate-300 mb-1">有效天数 (从购买日起算)</label>
+            <input type="number" v-model.number="packageForm.expireDays" placeholder="例如: 30" class="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-sm text-white" required />
+          </div>
+          <div>
+            <label class="block text-xs font-medium text-slate-300 mb-1">额度展示标签</label>
+            <input type="text" v-model="packageForm.quotaLabel" placeholder="例如: 1,000 次/月" class="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-sm text-white" required />
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-xs font-medium text-slate-300 mb-1">角标文本 (如: 🔥 热门推荐)</label>
+          <input type="text" v-model="packageForm.badge" placeholder="选填，例如: 入门优选 / 限时特惠" class="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-sm text-white" />
+        </div>
+
+        <div>
+          <label class="block text-xs font-medium text-slate-300 mb-1">套餐简述 (展示在商城卡片)</label>
+          <input type="text" v-model="packageForm.desc" placeholder="例如: 适合初创个人小程序与低频体验" class="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-sm text-white" />
+        </div>
+
+        <div class="flex items-center gap-6 pt-2">
+          <label class="flex items-center gap-2 text-xs font-medium text-slate-300 cursor-pointer">
+            <input type="checkbox" v-model="packageForm.popular" class="w-4 h-4 rounded bg-slate-900 border-slate-700 text-cyan-500 focus:ring-0" />
+            <span>设为热门推荐 (发卡页突出高亮)</span>
+          </label>
+          <label class="flex items-center gap-2 text-xs font-medium text-slate-300 cursor-pointer">
+            <input type="checkbox" v-model="packageForm.status" :true-value="1" :false-value="0" class="w-4 h-4 rounded bg-slate-900 border-slate-700 text-cyan-500 focus:ring-0" />
+            <span>上架销售</span>
+          </label>
+        </div>
+
+        <div class="pt-4 flex justify-end gap-2">
+          <button type="button" @click="packageModalVisible = false" class="px-4 py-2 border border-slate-700 rounded-lg text-slate-300 text-sm">取消</button>
+          <button type="submit" :disabled="packageSaving" class="px-4 py-2 bg-gradient-to-r from-cyan-500 to-indigo-500 text-white font-semibold rounded-lg text-sm flex items-center gap-2">
+            <i v-if="packageSaving" class="fa-solid fa-spinner animate-spin"></i>
+            <span>{{ packageSaving ? '保存中...' : '保存商品套餐' }}</span>
+          </button>
+        </div>
+      </form>
+    </el-dialog>
+  </div>
+
+  <script>
+    const { createApp, ref, reactive, onMounted, nextTick, watch } = Vue;
+
+    createApp({
+      setup() {
+        const isLoggedIn = ref(false);
+        const loginPassword = ref('');
+        const loginLoading = ref(false);
+        const adminToken = ref(localStorage.getItem('sv_admin_token') || '');
+
+        const currentTab = ref('dashboard');
+        const stats = reactive({ total_keys: 0, active_keys: 0, total_calls: 0, today_calls: 0, chart_7d: [], status_codes: [], top_keys: [] });
+
+        // Key 列表
+        const keysList = ref([]);
+        const keysTotal = ref(0);
+        const keyPage = ref(1);
+        const keySearch = ref('');
+
+        // 日志列表
+        const logsList = ref([]);
+
+        // 订单与买家
+        const ordersList = ref([]);
+        const ordersTotal = ref(0);
+        const ordersSearch = ref('');
+
+        const storeUsersList = ref([]);
+        const storeUsersTotal = ref(0);
+        const storeUsersSearch = ref('');
+
+        // 支付宝配置表单
+        const alipayForm = reactive({
+          configured: false,
+          sandbox: false,
+          appId: '',
+          privateKey: '',
+          alipayPublicKey: ''
+        });
+        const alipaySaving = ref(false);
+
+        // 邮箱配置表单
+        const emailForm = reactive({
+          configured: false,
+          qqNumber: '',
+          authCode: ''
+        });
+        const emailSaving = ref(false);
+
+        // 读取邮箱配置
+        async function fetchEmailConfig() {
+          const res = await apiRequest('/api/admin/email-config');
+          if (res.code === 200 && res.data) {
+            emailForm.configured = true;
+            emailForm.qqNumber = res.data.qqNumber || '';
+            emailForm.authCode = res.data.authCode || '';
+          }
+        }
+
+        // 保存邮箱配置
+        async function saveEmailConfig() {
+          if (!emailForm.qqNumber.trim()) {
+            ElementPlus.ElMessage.warning('请输入 QQ 号码');
+            return;
+          }
+          if (!emailForm.configured && !emailForm.authCode.trim()) {
+            ElementPlus.ElMessage.warning('请输入 16 位 QQ 邮箱授权码');
+            return;
+          }
+          emailSaving.value = true;
+          try {
+            const res = await apiRequest('/api/admin/email-config', 'POST', {
+              qqNumber: emailForm.qqNumber.trim(),
+              authCode: emailForm.authCode.trim()
+            });
+            if (res.code === 200) {
+              ElementPlus.ElMessage.success('QQ 邮箱配置保存成功！');
+              fetchEmailConfig();
+            } else {
+              ElementPlus.ElMessage.error(res.msg || '保存失败');
+            }
+          } catch (e) {
+            ElementPlus.ElMessage.error('保存请求失败');
+          } finally {
+            emailSaving.value = false;
+          }
+        }
+
+        // 测试发送邮件
+        async function openTestEmailModal() {
+          const email = prompt('请输入用于接收测试验证码的邮箱地址：');
+          if (!email || !email.trim()) return;
+          try {
+            ElementPlus.ElMessage.info('正在发送测试邮件，请稍候...');
+            const res = await apiRequest('/api/admin/email-test', 'POST', { targetEmail: email.trim() });
+            if (res.code === 200) {
+              ElementPlus.ElMessage.success(res.msg || '测试邮件发送成功！');
+            } else {
+              ElementPlus.ElMessage.error(res.msg || '发送失败');
+            }
+          } catch (e) {
+            ElementPlus.ElMessage.error('测试请求失败: ' + e.message);
+          }
+        }
+
+        // 小程序配置表单 (AppID / AppSecret / msgSecCheck)
+        const mpForm = reactive({
+          appName: '',
+          appId: '',
+          appSecret: '',
+          noticeText: '',
+          noticeEnabled: true
+        });
+        const mpSaving = ref(false);
+
+        // 读取小程序配置
+        async function fetchMiniprogramConfig() {
+          const res = await apiRequest('/api/system/miniprogram-config');
+          if (res.code === 200 && res.data) {
+            Object.assign(mpForm, res.data);
+          }
+        }
+
+        // 保存小程序配置
+        async function saveMiniprogramConfig() {
+          if (!mpForm.appId.trim()) {
+            ElementPlus.ElMessage.warning('请输入小程序 AppID');
+            return;
+          }
+          mpSaving.value = true;
+          try {
+            const res = await apiRequest('/api/system/miniprogram-config', 'POST', mpForm);
+            if (res.code === 200 || res.success) {
+              ElementPlus.ElMessage.success('小程序 AppID 及 AppSecret 配置保存成功！');
+              fetchMiniprogramConfig();
+            } else {
+              ElementPlus.ElMessage.error(res.message || res.msg || '保存失败');
+            }
+          } catch (e) {
+            ElementPlus.ElMessage.error('保存请求失败');
+          } finally {
+            mpSaving.value = false;
+          }
+        }
+
+        // 8. 商品/套餐管理
+        const adminPackagesList = ref([]);
+        const packageModalVisible = ref(false);
+        const isEditPackage = ref(false);
+        const packageEditingIndex = ref(-1);
+        const packageSaving = ref(false);
+
+        const packageForm = reactive({
+          id: '',
+          name: '',
+          price: 19.9,
+          quota: 1000,
+          quotaLabel: '1,000 次/月',
+          expireDays: 30,
+          badge: '',
+          desc: '',
+          popular: false,
+          status: 1
+        });
+
+        async function fetchAdminPackages() {
+          const res = await apiRequest('/api/admin/packages');
+          if (res.code === 200 && Array.isArray(res.data)) {
+            adminPackagesList.value = res.data;
+          }
+        }
+
+        function openAddPackageModal() {
+          isEditPackage.value = false;
+          packageEditingIndex.value = -1;
+          const randId = 'pkg_' + Date.now().toString(36);
+          Object.assign(packageForm, {
+            id: randId,
+            name: '黄金套餐',
+            price: 59.9,
+            quota: 20000,
+            quotaLabel: '20,000 次/月',
+            expireDays: 30,
+            badge: '特惠推荐',
+            desc: '适合高频使用与高并发能力',
+            popular: false,
+            status: 1
+          });
+          packageModalVisible.value = true;
+        }
+
+        function openEditPackageModal(item, idx) {
+          isEditPackage.value = true;
+          packageEditingIndex.value = idx;
+          Object.assign(packageForm, item);
+          packageModalVisible.value = true;
+        }
+
+        async function submitSavePackage() {
+          if (!packageForm.name || !packageForm.name.trim()) {
+            ElementPlus.ElMessage.warning('请输入套餐名称');
+            return;
+          }
+          packageSaving.value = true;
+          try {
+            const list = [...adminPackagesList.value];
+            if (isEditPackage.value && packageEditingIndex.value >= 0) {
+              list[packageEditingIndex.value] = { ...packageForm };
+            } else {
+              list.push({ ...packageForm });
+            }
+            const res = await apiRequest('/api/admin/packages', 'POST', { packages: list });
+            if (res.code === 200 || res.success) {
+              ElementPlus.ElMessage.success('商品套餐保存成功！');
+              adminPackagesList.value = list;
+              packageModalVisible.value = false;
+            } else {
+              ElementPlus.ElMessage.error(res.msg || '保存失败');
+            }
+          } catch (e) {
+            ElementPlus.ElMessage.error('保存请求失败');
+          } finally {
+            packageSaving.value = false;
+          }
+        }
+
+        async function togglePackageStatus(idx) {
+          const list = [...adminPackagesList.value];
+          const current = list[idx].status === 1 || list[idx].status === '1' || list[idx].status === true ? 1 : 0;
+          list[idx].status = current === 1 ? 0 : 1;
+          const res = await apiRequest('/api/admin/packages', 'POST', { packages: list });
+          if (res.code === 200 || res.success) {
+            ElementPlus.ElMessage.success(`已${list[idx].status === 1 ? '上架' : '下架'}该商品套餐`);
+            adminPackagesList.value = list;
+          }
+        }
+
+        async function deletePackageItem(idx) {
+          if (!confirm('确定要删除该商品套餐吗？下架即可暂时隐藏销售。')) return;
+          const list = [...adminPackagesList.value];
+          list.splice(idx, 1);
+          const res = await apiRequest('/api/admin/packages', 'POST', { packages: list });
+          if (res.code === 200 || res.success) {
+            ElementPlus.ElMessage.success('删除成功');
+            adminPackagesList.value = list;
+          }
+        }
+
+        // 弹窗表单
+        const createModalVisible = ref(false);
+        const createForm = reactive({ user_name: '', total_quota: 10000, expire_days: 0, note: '' });
+
+        const editModalVisible = ref(false);
+        const editingId = ref(null);
+        const editForm = reactive({ add_quota: 0, expire_days: 0, note: '' });
+
+        let chartTrendInstance = null;
+        let chartStatusInstance = null;
+        let chartTopKeysInstance = null;
+
+        // 通用 API 请求库
+        async function apiRequest(url, method = 'GET', data = null) {
+          const headers = { 'Content-Type': 'application/json' };
+          if (adminToken.value) headers['X-Admin-Token'] = adminToken.value;
+
+          const options = { method, headers };
+          if (data) options.body = JSON.stringify(data);
+
+          const res = await fetch(url, options);
+          const json = await res.json();
+
+          if (res.status === 401) {
+            isLoggedIn.value = false;
+            localStorage.removeItem('sv_admin_token');
+          }
+          return json;
+        }
+
+        // 渲染图表
+        function renderCharts() {
+          if (typeof echarts === 'undefined') return;
+
+          const trendDom = document.getElementById('chart-trend');
+          if (trendDom) {
+            if (!chartTrendInstance) chartTrendInstance = echarts.init(trendDom);
+            const raw7d = stats.chart_7d || [];
+            const dates = [];
+            const counts = [];
+            if (raw7d.length > 0) {
+              raw7d.forEach(item => {
+                dates.push(item.date ? String(item.date).slice(5) : '');
+                counts.push(item.count || 0);
+              });
+            } else {
+              for (let i = 6; i >= 0; i--) {
+                const d = new Date();
+                d.setDate(d.getDate() - i);
+                dates.push(`${d.getMonth() + 1}-${d.getDate()}`);
+                counts.push(0);
+              }
+            }
+
+            chartTrendInstance.setOption({
+              backgroundColor: 'transparent',
+              tooltip: { trigger: 'axis', backgroundColor: '#1e293b', borderColor: '#334155', textStyle: { color: '#f8fafc' } },
+              grid: { top: '12%', left: '3%', right: '4%', bottom: '3%', containLabel: true },
+              xAxis: { type: 'category', boundaryGap: false, data: dates, axisLine: { lineStyle: { color: '#334155' } }, axisLabel: { color: '#94a3b8' } },
+              yAxis: { type: 'value', splitLine: { lineStyle: { color: '#1e293b' } }, axisLabel: { color: '#94a3b8' } },
+              series: [{ name: '解析调用量', type: 'line', smooth: true, symbolSize: 8, itemStyle: { color: '#38bdf8' }, areaStyle: { color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [{ offset: 0, color: 'rgba(56, 189, 248, 0.4)' }, { offset: 1, color: 'rgba(56, 189, 248, 0.0)' }]) }, data: counts }]
+            });
+          }
+
+          const statusDom = document.getElementById('chart-status');
+          if (statusDom) {
+            if (!chartStatusInstance) chartStatusInstance = echarts.init(statusDom);
+            const rawCodes = stats.status_codes || [];
+            let pieData = rawCodes.map(item => ({ name: `HTTP ${item.status_code}`, value: item.count || 0 }));
+            if (pieData.length === 0) pieData = [{ name: 'HTTP 200 (成功)', value: Math.max(1, stats.today_calls || 1) }];
+            chartStatusInstance.setOption({
+              backgroundColor: 'transparent',
+              tooltip: { trigger: 'item', backgroundColor: '#1e293b', borderColor: '#334155', textStyle: { color: '#f8fafc' } },
+              legend: { bottom: '0%', left: 'center', textStyle: { color: '#94a3b8', fontSize: 11 } },
+              series: [{ name: '状态码占比', type: 'pie', radius: ['40%', '70%'], avoidLabelOverlap: false, itemStyle: { borderRadius: 8, borderColor: '#0f172a', borderWidth: 2 }, label: { show: false }, data: pieData }]
+            });
+          }
+
+          const topDom = document.getElementById('chart-top-keys');
+          if (topDom) {
+            if (!chartTopKeysInstance) chartTopKeysInstance = echarts.init(topDom);
+            const rawTop = stats.top_keys || [];
+            const names = []; const values = [];
+            rawTop.forEach(item => {
+              names.push(item.user_name || truncateKey(item.api_key));
+              values.push(item.used_quota || 0);
+            });
+            chartTopKeysInstance.setOption({
+              backgroundColor: 'transparent',
+              tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' }, backgroundColor: '#1e293b', borderColor: '#334155', textStyle: { color: '#f8fafc' } },
+              grid: { top: '10%', left: '3%', right: '8%', bottom: '5%', containLabel: true },
+              xAxis: { type: 'value', splitLine: { lineStyle: { color: '#1e293b' } }, axisLabel: { color: '#94a3b8' } },
+              yAxis: { type: 'category', data: names, axisLine: { lineStyle: { color: '#334155' } }, axisLabel: { color: '#94a3b8' } },
+              series: [{ name: '已使用解析次数', type: 'bar', barWidth: '45%', itemStyle: { color: new echarts.graphic.LinearGradient(1, 0, 0, 0, [{ offset: 0, color: '#818cf8' }, { offset: 1, color: '#6366f1' }]), borderRadius: [0, 6, 6, 0] }, data: values }]
+            });
+          }
+        }
+
+        async function handleLogin() {
+          loginLoading.value = true;
+          try {
+            const res = await fetch('/api/admin/login', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ password: loginPassword.value }),
+            });
+            const data = await res.json();
+            if (res.ok && data.code === 200) {
+              adminToken.value = data.data.token;
+              localStorage.setItem('sv_admin_token', adminToken.value);
+              isLoggedIn.value = true;
+              ElementPlus.ElMessage.success('登录成功！');
+              initData();
+            } else {
+              ElementPlus.ElMessage.error(data.msg || '密码错误');
+            }
+          } catch (e) {
+            ElementPlus.ElMessage.error('请求网络失败');
+          } finally {
+            loginLoading.value = false;
+          }
+        }
+
+        function logout() {
+          isLoggedIn.value = false;
+          localStorage.removeItem('sv_admin_token');
+        }
+
+        async function fetchStats() {
+          const res = await apiRequest('/api/admin/stats');
+          if (res.code === 200) {
+            Object.assign(stats, res.data);
+            nextTick(renderCharts);
+          }
+        }
+
+        async function fetchKeys() {
+          const url = `/api/admin/keys?page=${keyPage.value}&keyword=${encodeURIComponent(keySearch.value)}`;
+          const res = await apiRequest(url);
+          if (res.code === 200) {
+            keysList.value = res.data.list;
+            keysTotal.value = res.data.total;
+          }
+        }
+
+        async function fetchLogs() {
+          const res = await apiRequest('/api/admin/logs?page=1&page_size=30');
+          if (res.code === 200) {
+            logsList.value = res.data.list;
+          }
+        }
+
+        async function fetchOrders() {
+          const url = `/api/admin/orders?keyword=${encodeURIComponent(ordersSearch.value)}`;
+          const res = await apiRequest(url);
+          if (res.code === 200) {
+            ordersList.value = res.data.list;
+            ordersTotal.value = res.data.total;
+          }
+        }
+
+        async function fetchStoreUsers() {
+          const url = `/api/admin/store-users?keyword=${encodeURIComponent(storeUsersSearch.value)}`;
+          const res = await apiRequest(url);
+          if (res.code === 200) {
+            storeUsersList.value = res.data.list;
+            storeUsersTotal.value = res.data.total;
+          }
+        }
+
+        // 读取支付宝配置
+        async function fetchAlipayConfig() {
+          const res = await apiRequest('/api/admin/alipay-config');
+          if (res.code === 200 && res.data) {
+            alipayForm.configured = true;
+            alipayForm.sandbox = !!res.data.sandbox;
+            alipayForm.appId = res.data.appId || '';
+            alipayForm.privateKey = res.data.privateKey || '';
+            alipayForm.alipayPublicKey = res.data.alipayPublicKey || '';
+          }
+        }
+
+        // 保存支付宝配置
+        async function saveAlipayConfig() {
+          if (!alipayForm.appId.trim()) {
+            ElementPlus.ElMessage.warning('请输入支付宝 App ID');
+            return;
+          }
+          alipaySaving.value = true;
+          try {
+            const res = await apiRequest('/api/admin/alipay-config', 'POST', {
+              appId: alipayForm.appId.trim(),
+              privateKey: alipayForm.privateKey.trim(),
+              alipayPublicKey: alipayForm.alipayPublicKey.trim(),
+              sandbox: alipayForm.sandbox
+            });
+            if (res.code === 200) {
+              ElementPlus.ElMessage.success('支付宝配置保存成功，即时生效！');
+              fetchAlipayConfig();
+            } else {
+              ElementPlus.ElMessage.error(res.msg || '保存失败');
+            }
+          } catch (e) {
+            ElementPlus.ElMessage.error('保存请求失败');
+          } finally {
+            alipaySaving.value = false;
+          }
+        }
+
+        function initData() {
+          fetchStats();
+          fetchKeys();
+          fetchLogs();
+          fetchOrders();
+          fetchStoreUsers();
+          fetchAlipayConfig();
+        }
+
+        function openCreateModal() {
+          createForm.user_name = '';
+          createForm.total_quota = 10000;
+          createForm.expire_days = 0;
+          createForm.note = '';
+          createModalVisible.value = true;
+        }
+
+        async function submitCreateKey() {
+          const res = await apiRequest('/api/admin/keys', 'POST', createForm);
+          if (res.code === 200) {
+            ElementPlus.ElMessage.success('生成成功！Key: ' + res.data.api_key);
+            createModalVisible.value = false;
+            fetchKeys();
+            fetchStats();
+          } else {
+            ElementPlus.ElMessage.error(res.msg);
+          }
+        }
+
+        function openEditModal(item) {
+          editingId.value = item.id;
+          editForm.add_quota = 0;
+          editForm.expire_days = 0;
+          editForm.note = item.note || '';
+          editModalVisible.value = true;
+        }
+
+        async function submitEditKey() {
+          const res = await apiRequest(`/api/admin/keys/${editingId.value}`, 'PUT', editForm);
+          if (res.code === 200) {
+            ElementPlus.ElMessage.success('更新成功');
+            editModalVisible.value = false;
+            fetchKeys();
+          } else {
+            ElementPlus.ElMessage.error(res.msg);
+          }
+        }
+
+        async function toggleStatus(item) {
+          const newStatus = item.status === 1 ? 0 : 1;
+          const res = await apiRequest(`/api/admin/keys/${item.id}`, 'PUT', { status: newStatus });
+          if (res.code === 200) {
+            ElementPlus.ElMessage.success('状态变更成功');
+            fetchKeys();
+          }
+        }
+
+        async function deleteKey(id) {
+          if (!confirm('确定要删除此 API Key 吗？不可撤销！')) return;
+          const res = await apiRequest(`/api/admin/keys/${id}`, 'DELETE');
+          if (res.code === 200) {
+            ElementPlus.ElMessage.success('删除成功');
+            fetchKeys();
+            fetchStats();
+          }
+        }
+
+        function truncateKey(key) {
+          if (!key) return '';
+          return key.length > 20 ? key.slice(0, 10) + '...' + key.slice(-6) : key;
+        }
+
+        function copyText(str) {
+          navigator.clipboard.writeText(str).then(() => {
+            ElementPlus.ElMessage.success('已复制到剪贴板！');
+          });
+        }
+
+        function formatDate(dateStr) {
+          if (!dateStr) return '-';
+          let s = typeof dateStr === 'string' ? dateStr.trim() : String(dateStr);
+          s = s.replace('T', ' ').replace(/\.\d+Z?$/, '');
+          if (/^\d{4}-\d{2}-\d{2}\s\d{2}:\d{2}:\d{2}$/.test(s)) {
+            return s;
+          }
+          const d = new Date(s);
+          if (isNaN(d.getTime())) return String(dateStr);
+          return d.toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai', hour12: false });
+        }
+
+        watch(currentTab, (val) => {
+          if (val === 'dashboard') {
+            nextTick(renderCharts);
+          }
+        });
+
+        onMounted(() => {
+          if (adminToken.value) {
+            isLoggedIn.value = true;
+            initData();
+          }
+          window.addEventListener('resize', () => {
+            chartTrendInstance && chartTrendInstance.resize();
+            chartStatusInstance && chartStatusInstance.resize();
+            chartTopKeysInstance && chartTopKeysInstance.resize();
+          });
+        });
+
+        return {
+          isLoggedIn, loginPassword, loginLoading, currentTab, stats,
+          keysList, keysTotal, keyPage, keySearch, logsList,
+          ordersList, ordersTotal, ordersSearch, fetchOrders,
+          storeUsersList, storeUsersTotal, storeUsersSearch, fetchStoreUsers,
+          alipayForm, alipaySaving, fetchAlipayConfig, saveAlipayConfig,
+          emailForm, emailSaving, fetchEmailConfig, saveEmailConfig, openTestEmailModal,
+          mpForm, mpSaving, fetchMiniprogramConfig, saveMiniprogramConfig,
+          adminPackagesList, packageModalVisible, isEditPackage, packageSaving, packageForm,
+          fetchAdminPackages, openAddPackageModal, openEditPackageModal, submitSavePackage,
+          togglePackageStatus, deletePackageItem,
+          createModalVisible, createForm, editModalVisible, editForm,
+          handleLogin, logout, fetchStats, fetchKeys, fetchLogs,
+          openCreateModal, submitCreateKey, openEditModal, submitEditKey,
+          toggleStatus, deleteKey, truncateKey, copyText, formatDate
+        };
+      }
+    }).use(ElementPlus).mount('#app');
+  </script>
+</body>
+</html>
