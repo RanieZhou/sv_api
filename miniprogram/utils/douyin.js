@@ -72,7 +72,7 @@ function testApiConnection() {
  * @param {string} apiKey - 可选的 API Key
  * @returns {Promise} 解析结果
  */
-function parseDouyinVideo(shareContent, apiKey = DEFAULT_API_KEY) {
+function parseDouyinVideo(shareContent, apiKey = '') {
   return new Promise((resolve, reject) => {
     try {
       // 从包含描述的完整分享文本中提取 URL
@@ -84,13 +84,15 @@ function parseDouyinVideo(shareContent, apiKey = DEFAULT_API_KEY) {
       
       console.log('正在提交解析链接:', cleanUrl);
       
+      const reqData = { url: cleanUrl };
+      if (apiKey) {
+        reqData.api_key = apiKey;
+      }
+      
       wx.request({
         url: getApiUrl('/parse'),
         method: 'GET',
-        data: {
-          url: cleanUrl,
-          api_key: apiKey
-        },
+        data: reqData,
         timeout: 15000,
         success: (res) => {
           console.log('解析接口返回:', res);
@@ -409,11 +411,12 @@ function saveVideoToAlbum(filePath) {
 
 function handleApiError(error, context = '') {
   console.error(`${context} 错误:`, error);
-  const message = error.message || '操作失败';
-  wx.showToast({
-    title: message,
-    icon: 'none',
-    duration: 2500
+  const message = error ? (error.message || String(error)) : '操作失败';
+  wx.showModal({
+    title: '解析提示',
+    content: message,
+    showCancel: false,
+    confirmText: '我知道了'
   });
 }
 

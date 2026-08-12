@@ -5,24 +5,35 @@ import { queryOne, execute } from '../db.js';
  */
 export async function authenticateKey(req, res, next) {
   try {
-    // 1. 尝试从 Header 或 Query 参数中获取 api_key
-    const apiKey =
+    // 1. 尝试从 Header 或 Query/Body 参数中获取 api_key
+    let apiKey =
       req.headers['x-api-key'] ||
       (req.headers.authorization && req.headers.authorization.startsWith('Bearer ')
         ? req.headers.authorization.slice(7)
         : null) ||
       req.query.api_key ||
-      req.body.api_key;
+      req.body?.api_key;
+
+    // 2. 如果请求中未显式传 Key，读取后台系统设置 (system_config) 中的 Key
+    if (!apiKey || typeof apiKey !== 'string' || !apiKey.trim()) {
+      const configRow = await queryOne("SELECT config_value FROM system_config WHERE config_key = 'apikey'");
+      if (configRow && configRow.config_value) {
+        try {
+          const parsed = JSON.parse(configRow.config_value);
+          apiKey = (parsed.api_key || parsed.apiKey || '').trim();
+        } catch(e) {}
+      }
+    }
 
     if (!apiKey) {
       return res.status(401).json({
         code: 401,
-        msg: '缺少 API Key，请在 URL 参数中带上 ?api_key=xxx 或在 Header 中传入 X-API-Key',
+        msg: '后台未配置接口密钥 (API Key)，请管理员在后台【接口设置】中填入密钥',
         data: null,
       });
     }
 
-    // 2. 校验 Key 是否存在于数据库
+    // 3. 校验 Key 是否存在于数据库
     const keyInfo = await queryOne(
       'SELECT * FROM api_keys WHERE api_key = ? LIMIT 1',
       [apiKey]
@@ -31,7 +42,7 @@ export async function authenticateKey(req, res, next) {
     if (!keyInfo) {
       return res.status(403).json({
         code: 403,
-        msg: 'API Key 无效',
+        msg: '接口密钥配置错误或无效，请管理员在后台【接口设置】中检查 API Key',
         data: null,
       });
     }
@@ -39,28 +50,28 @@ export async function authenticateKey(req, res, next) {
     if (keyInfo.status !== 1) {
       return res.status(403).json({
         code: 403,
-        msg: 'API Key 已被禁用，请联系服务提供方',
+        msg: '接口密钥已被禁用，请在后台启用或更换新的 API Key',
         data: null,
       });
     }
 
-    // 3. 校验到期时间
+    // 4. 校验到期时间
     if (keyInfo.expire_time) {
       const expireTs = new Date(keyInfo.expire_time).getTime();
       if (expireTs < Date.now()) {
         return res.status(403).json({
           code: 403,
-          msg: 'API Key 已过期，请联系管理员续费',
+          msg: '接口密钥已过期，请在后台更新密钥或续费',
           data: null,
         });
       }
     }
 
-    // 4. 校验额度 (-1 为无限)
+    // 5. 校验额度 (-1 为无限)
     if (keyInfo.total_quota !== -1 && keyInfo.used_quota >= keyInfo.total_quota) {
       return res.status(429).json({
         code: 429,
-        msg: '调用次数已耗尽（剩余 0 次），请联系管理员充值',
+        msg: '接口密钥调用次数已耗尽，请联系管理员充值',
         data: null,
       });
     }
