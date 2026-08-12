@@ -245,9 +245,9 @@ router.post('/create-alipay-order', storeAuth, async (req, res) => {
       },
     });
 
-    const qrCode = result?.alipayTradePrecreateResponse?.qrCode || result?.qr_code;
+    const qrCode = result?.qrCode || result?.qr_code || result?.alipayTradePrecreateResponse?.qrCode || result?.alipay_trade_precreate_response?.qr_code;
     if (!qrCode) {
-      console.error('[Store] 支付宝 precreate 响应:', JSON.stringify(result));
+      console.error('[Store] 支付宝 precreate 响应 (未找到 qrCode 字段):', JSON.stringify(result));
       return res.status(500).json({ code: 500, success: false, message: '支付宝生成二维码失败，请检查配置' });
     }
 
