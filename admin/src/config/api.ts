@@ -1,3 +1,4 @@
+/// <reference types="vite/client" />
 import axios from 'axios'
 import { ElMessage } from 'element-plus'
 import router from '../router'
