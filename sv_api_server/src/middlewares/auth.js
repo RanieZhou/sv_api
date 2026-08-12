@@ -14,24 +14,16 @@ export async function authenticateKey(req, res, next) {
       req.query.api_key ||
       req.body?.api_key;
 
-    // 2. 如果请求中未显式传 Key，读取后台系统设置 (system_config) 中的 Key
+    // 2. 严格模式：未显式传递 Key，直接拒绝访问
     if (!apiKey || typeof apiKey !== 'string' || !apiKey.trim()) {
-      const configRow = await queryOne("SELECT config_value FROM system_config WHERE config_key = 'apikey'");
-      if (configRow && configRow.config_value) {
-        try {
-          const parsed = JSON.parse(configRow.config_value);
-          apiKey = (parsed.api_key || parsed.apiKey || '').trim();
-        } catch(e) {}
-      }
-    }
-
-    if (!apiKey) {
       return res.status(401).json({
         code: 401,
-        msg: '后台未配置接口密钥 (API Key)，请管理员在后台【接口设置】中填入密钥',
+        msg: '未经授权：缺少 api_key 参数，请在请求中传入有效的 API Key 密钥',
         data: null,
       });
     }
+
+    apiKey = apiKey.trim();
 
     // 3. 校验 Key 是否存在于数据库
     const keyInfo = await queryOne(
