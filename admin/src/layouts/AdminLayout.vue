@@ -36,6 +36,13 @@
             <el-icon><Money /></el-icon>
             <span>流量主设置</span>
           </el-menu-item>
+
+          <a href="https://shortvideo.aihubzone.cn/admin/" target="_blank" class="external-menu-link">
+            <el-menu-item index="key-management">
+              <el-icon><Key /></el-icon>
+              <span>API Key 授权管理 ↗</span>
+            </el-menu-item>
+          </a>
         </el-menu>
       </el-aside>
       
@@ -96,7 +103,8 @@ import {
   ArrowDown,
   Link,
   Money,
-  Setting
+  Setting,
+  Key
 } from '@element-plus/icons-vue'
 
 const router = useRouter()
@@ -253,5 +261,10 @@ const handleUserAction = async (command: string) => {
 
 :deep(.el-breadcrumb__inner) {
   font-weight: normal;
+}
+
+.external-menu-link {
+  text-decoration: none;
+  color: inherit;
 }
 </style> 
