@@ -73,21 +73,28 @@ function getOrFetchApiKey(userApiKey = '') {
   return new Promise((resolve) => {
     if (userApiKey) return resolve(userApiKey);
 
-    const cachedKey = wx.getStorageSync('user_api_key') || wx.getStorageSync('station_api_key');
-    if (cachedKey) return resolve(cachedKey);
+    const userKey = wx.getStorageSync('user_api_key');
+    if (userKey) return resolve(userKey);
 
+    // 发起网络请求实时获取/校验站长 Key，避免旧空缓存影响
     wx.request({
       url: getApiUrl('/system/interface-config'),
       method: 'GET',
       timeout: 5000,
       success: (res) => {
-        const k = res.data?.data?.api_key || res.data?.data?.apiKey || '';
+        const k = res.data?.data?.api_key || res.data?.data?.apiKey || res.data?.api_key || res.data?.apiKey || '';
         if (k) {
           wx.setStorageSync('station_api_key', k);
+          resolve(k);
+        } else {
+          const cachedStationKey = wx.getStorageSync('station_api_key') || '';
+          resolve(cachedStationKey);
         }
-        resolve(k);
       },
-      fail: () => resolve('')
+      fail: () => {
+        const cachedStationKey = wx.getStorageSync('station_api_key') || '';
+        resolve(cachedStationKey);
+      }
     });
   });
 }
@@ -285,6 +292,9 @@ function parseDouyinVideo(shareContent, apiKey = '') {
             
             resolve(formattedData);
           } else {
+            if (res.statusCode === 401 || res.data?.code === 401) {
+              wx.removeStorageSync('station_api_key');
+            }
             const errorMessage = res.data?.msg || res.data?.message || '解析失败，上游未响应有效内容';
             reject(new Error(errorMessage));
           }

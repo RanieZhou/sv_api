@@ -159,6 +159,10 @@ router.get('/apiKey/config', handleGetApiKeyConfig);
 router.post('/apiKey/config', handleSaveApiKeyConfig);
 router.get('/system/apikey-config', handleGetApiKeyConfig);
 router.post('/system/apikey-config', handleSaveApiKeyConfig);
+router.get('/system/interface-config', handleGetApiKeyConfig);
+router.post('/system/interface-config', handleSaveApiKeyConfig);
+router.get('/interface-config', handleGetApiKeyConfig);
+router.post('/interface-config', handleSaveApiKeyConfig);
 
 // 3. 流量主/广告设置
 router.get('/system/ad-config', async (req, res) => {
