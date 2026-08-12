@@ -113,6 +113,12 @@
             <i class="fa-solid fa-envelope"></i> 邮箱配置
           </button>
           <button
+            @click="currentTab = 'mpConfig'; fetchMiniprogramConfig()"
+            :class="['px-4 py-2 rounded-lg text-sm font-medium transition-all flex items-center gap-2', currentTab === 'mpConfig' ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/30' : 'text-slate-400 hover:text-white']"
+          >
+            <i class="fa-solid fa-gear"></i> 小程序配置
+          </button>
+          <button
             @click="currentTab = 'logs'"
             :class="['px-4 py-2 rounded-lg text-sm font-medium transition-all flex items-center gap-2', currentTab === 'logs' ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/30' : 'text-slate-400 hover:text-white']"
           >
@@ -507,6 +513,82 @@
           </div>
         </div>
 
+        <!-- 7. 小程序配置 View (用于设置 AppID / AppSecret / 内容安全 msgSecCheck) -->
+        <div v-if="currentTab === 'mpConfig'" class="space-y-6">
+          <div class="glass-card p-6 rounded-2xl space-y-6">
+            <div class="flex items-center justify-between border-b border-slate-800 pb-4">
+              <h2 class="text-lg font-bold text-white flex items-center gap-2">
+                <i class="fa-solid fa-gear text-cyan-400"></i> 小程序 AppID 与 AppSecret 配置
+              </h2>
+              <span :class="['px-3 py-1 rounded-full text-xs font-semibold', mpForm.appId && mpForm.appSecret ? 'bg-emerald-500/20 text-emerald-400' : 'bg-amber-500/20 text-amber-400']">
+                {{ mpForm.appId && mpForm.appSecret ? '✅ 已开启 msgSecCheck 内容安全识别' : '⚠️ 建议填入 AppSecret 开启 msgSecCheck 审核支持' }}
+              </span>
+            </div>
+
+            <!-- 说明组件 -->
+            <div class="p-4 bg-cyan-950/40 border border-cyan-800/50 rounded-xl text-xs text-cyan-200 space-y-1.5">
+              <div class="font-bold text-sm text-cyan-400">💡 微信 msgSecCheck 内容安全说明：</div>
+              <p>1. 前往 <strong>微信公众平台 (mp.weixin.qq.com)</strong> → 点击「开发管理」→「开发设置」；</p>
+              <p>2. 复制小程序的 <strong>AppID</strong> 及生成 <strong>AppSecret</strong>（小程序密钥）；</p>
+              <p>3. 填入下方保存后，系统解析链接时将自动调用微信官方 `msgSecCheck` 过滤敏感词，满足微信审核规范 5.18 要求。</p>
+            </div>
+
+            <!-- 表单内容 -->
+            <div class="space-y-5">
+              <div>
+                <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">小程序 AppID</label>
+                <input
+                  type="text"
+                  v-model="mpForm.appId"
+                  placeholder="例如：wx1234567890abcdef"
+                  class="w-full px-4 py-2.5 bg-slate-900 border border-slate-700 rounded-xl text-white text-sm focus:outline-none focus:border-cyan-500 font-mono"
+                />
+              </div>
+
+              <div>
+                <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">小程序 AppSecret (安全密钥)</label>
+                <input
+                  type="password"
+                  v-model="mpForm.appSecret"
+                  placeholder="例如：abcdef1234567890abcdef1234567890"
+                  class="w-full px-4 py-2.5 bg-slate-900 border border-slate-700 rounded-xl text-white text-sm focus:outline-none focus:border-cyan-500 font-mono"
+                />
+              </div>
+
+              <div>
+                <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">小程序显示名称</label>
+                <input
+                  type="text"
+                  v-model="mpForm.appName"
+                  placeholder="例如：云边去水印"
+                  class="w-full px-4 py-2.5 bg-slate-900 border border-slate-700 rounded-xl text-white text-sm focus:outline-none focus:border-cyan-500"
+                />
+              </div>
+
+              <div>
+                <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">小程序首页滚动通知</label>
+                <input
+                  type="text"
+                  v-model="mpForm.noticeText"
+                  placeholder="例如：欢迎使用短视频无水印解析工具！"
+                  class="w-full px-4 py-2.5 bg-slate-900 border border-slate-700 rounded-xl text-white text-sm focus:outline-none focus:border-cyan-500"
+                />
+              </div>
+
+              <div class="pt-4">
+                <button
+                  @click="saveMiniprogramConfig"
+                  :disabled="mpSaving"
+                  class="px-6 py-3 bg-gradient-to-r from-cyan-500 to-indigo-500 text-white font-bold rounded-xl shadow-lg shadow-cyan-500/25 hover:opacity-90 transition-all flex items-center gap-2"
+                >
+                  <i v-if="mpSaving" class="fa-solid fa-spinner animate-spin"></i>
+                  <span>{{ mpSaving ? '保存中...' : '💾 保存小程序配置' }}</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
         <!-- 6. 调用日志 View -->
         <div v-if="currentTab === 'logs'" class="space-y-6">
           <div class="glass-card p-6 rounded-2xl space-y-4">
@@ -704,6 +786,46 @@
             }
           } catch (e) {
             ElementPlus.ElMessage.error('测试请求失败: ' + e.message);
+          }
+        }
+
+        // 小程序配置表单 (AppID / AppSecret / msgSecCheck)
+        const mpForm = reactive({
+          appName: '',
+          appId: '',
+          appSecret: '',
+          noticeText: '',
+          noticeEnabled: true
+        });
+        const mpSaving = ref(false);
+
+        // 读取小程序配置
+        async function fetchMiniprogramConfig() {
+          const res = await apiRequest('/api/system/miniprogram-config');
+          if (res.code === 200 && res.data) {
+            Object.assign(mpForm, res.data);
+          }
+        }
+
+        // 保存小程序配置
+        async function saveMiniprogramConfig() {
+          if (!mpForm.appId.trim()) {
+            ElementPlus.ElMessage.warning('请输入小程序 AppID');
+            return;
+          }
+          mpSaving.value = true;
+          try {
+            const res = await apiRequest('/api/system/miniprogram-config', 'POST', mpForm);
+            if (res.code === 200 || res.success) {
+              ElementPlus.ElMessage.success('小程序 AppID 及 AppSecret 配置保存成功！');
+              fetchMiniprogramConfig();
+            } else {
+              ElementPlus.ElMessage.error(res.message || res.msg || '保存失败');
+            }
+          } catch (e) {
+            ElementPlus.ElMessage.error('保存请求失败');
+          } finally {
+            mpSaving.value = false;
           }
         }
 
@@ -1030,6 +1152,7 @@
           storeUsersList, storeUsersTotal, storeUsersSearch, fetchStoreUsers,
           alipayForm, alipaySaving, fetchAlipayConfig, saveAlipayConfig,
           emailForm, emailSaving, fetchEmailConfig, saveEmailConfig, openTestEmailModal,
+          mpForm, mpSaving, fetchMiniprogramConfig, saveMiniprogramConfig,
           createModalVisible, createForm, editModalVisible, editForm,
           handleLogin, logout, fetchStats, fetchKeys, fetchLogs,
           openCreateModal, submitCreateKey, openEditModal, submitEditKey,
