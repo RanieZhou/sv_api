@@ -3,8 +3,23 @@ import axios from 'axios';
 import { config } from '../config.js';
 import { extractUrl } from '../utils/urlExtractor.js';
 import { authenticateKey, logApiCall } from '../middlewares/auth.js';
+import { checkMsgSecurity } from '../utils/secCheck.js';
 
 const router = express.Router();
+
+// 微信内容安全校验对外公开接口 (支持浏览器/小程序直接测试)
+router.all('/sec-check', async (req, res) => {
+  const text = req.query.text || req.body?.text || '测试链接';
+  const sec = await checkMsgSecurity(text);
+  return res.json({
+    code: 200,
+    success: sec.pass,
+    errcode: sec.errcode,
+    errmsg: sec.errmsg,
+    msg: sec.pass ? '内容安全检查通过' : '内容包含违规词汇',
+    detail: sec.detail || null
+  });
+});
 
 async function handleParseRequest(req, res) {
   const startTime = Date.now();
@@ -15,6 +30,18 @@ async function handleParseRequest(req, res) {
       code: 400,
       msg: '缺少 url 参数，请传入待解析的视频链接或分享文本',
       data: null,
+    });
+  }
+
+  // 微信内容安全校验 msgSecCheck
+  const secCheckRes = await checkMsgSecurity(rawInput);
+  if (!secCheckRes.pass) {
+    return res.status(400).json({
+      code: 400,
+      msg: '内容安全检查未通过：输入文本包含违法违规或敏感信息',
+      errcode: secCheckRes.errcode,
+      errmsg: secCheckRes.errmsg,
+      data: null
     });
   }
 

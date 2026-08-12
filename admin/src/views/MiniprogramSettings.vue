@@ -39,6 +39,18 @@
             微信小程序的唯一标识符，格式如：wx1234567890abcdef
           </div>
         </el-form-item>
+
+        <el-form-item label="小程序 AppSecret" prop="appSecret">
+          <el-input 
+            v-model="settingsForm.appSecret" 
+            placeholder="请输入小程序 AppSecret (用于 msgSecCheck 内容安全识别)"
+            type="password"
+            show-password
+          />
+          <div class="form-tip">
+            微信公众平台「开发管理」→「开发设置」中的 AppSecret，配置后自动开启官方 msgSecCheck 内容安全审核
+          </div>
+        </el-form-item>
         
         <el-form-item label="滚动通知" prop="noticeText">
           <el-input 
@@ -110,6 +122,7 @@ import { systemAPI } from '../utils/api'
 interface SettingsForm {
   appName: string
   appId: string
+  appSecret: string
   noticeText: string
   noticeEnabled: boolean
 }
@@ -121,6 +134,7 @@ const saving = ref(false)
 const settingsForm = reactive<SettingsForm>({
   appName: '',
   appId: '',
+  appSecret: '',
   noticeText: '',
   noticeEnabled: true
 })

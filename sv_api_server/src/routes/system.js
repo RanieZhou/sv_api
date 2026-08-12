@@ -30,6 +30,7 @@ router.get('/system/miniprogram-config', async (req, res) => {
     const data = await getConfig('miniprogram', {
       appName: '短视频聚合解析',
       appId: '',
+      appSecret: '',
       noticeText: '欢迎使用短视频无水印解析工具！',
       noticeEnabled: true
     });
