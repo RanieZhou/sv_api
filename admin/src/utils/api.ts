@@ -1,9 +1,11 @@
 import axios from 'axios'
 import { ElMessage } from 'element-plus'
 
+const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || (typeof window !== 'undefined' && window.location.host.includes('watermark.aihubzone.cn') ? 'https://shortvideo.aihubzone.cn/api' : '/api')
+
 // 创建axios实例
 export const api = axios.create({
-  baseURL: '/api',
+  baseURL: apiBaseUrl,
   timeout: 10000,
   headers: {
     'Content-Type': 'application/json'
