@@ -7,6 +7,7 @@ export default defineConfig(({ mode }) => {
   const apiTarget = env.VITE_API_TARGET || 'http://localhost:3010'
 
   return {
+    base: './',
     plugins: [vue()],
     resolve: {
       alias: {
