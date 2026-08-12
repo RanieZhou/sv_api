@@ -165,25 +165,151 @@ page {
   box-shadow: 0 4rpx 12rpx rgba(74,126,230,0.25);
 }
 
-/* 功能特性 */
-.feature-section {
-  display: flex;
-  justify-content: space-around;
-  margin: 0 24rpx;
+/* 使用教程 & 常见问题 公用容器 */
+.guide-section, .faq-section {
+  margin: 24rpx 24rpx 0;
   background: #fff;
-  border-radius: 20rpx;
-  padding: 28rpx 16rpx;
-  box-shadow: 0 4rpx 16rpx rgba(74,144,226,0.07);
+  border-radius: 24rpx;
+  padding: 36rpx 28rpx;
+  box-shadow: 0 6rpx 24rpx rgba(74,144,226,0.08);
 }
-.feature-item {
+
+.guide-badge-wrap {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 8rpx;
+}
+
+.guide-badge {
+  background: #FFF7E6;
+  color: #FA8C16;
+  font-size: 22rpx;
+  font-weight: 600;
+  padding: 4rpx 20rpx;
+  border-radius: 20rpx;
+  letter-spacing: 1rpx;
+}
+
+.section-header {
+  text-align: center;
+  margin-bottom: 32rpx;
+}
+
+.section-title {
+  font-size: 36rpx;
+  font-weight: 700;
+  color: #1F2937;
+  letter-spacing: 1rpx;
+}
+
+/* 竖直流程图 */
+.guide-steps {
   display: flex;
   flex-direction: column;
-  align-items: center;
-  gap: 10rpx;
+  padding: 0 10rpx;
 }
-.f-icon { font-size: 44rpx; }
-.f-name {
-  font-size: 24rpx;
-  color: #5A6B8A;
-  font-weight: 500;
+
+.step-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 24rpx;
+}
+
+.step-icon-wrap {
+  width: 80rpx;
+  height: 80rpx;
+  background: linear-gradient(135deg, #7C4DFF, #651FFF);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 6rpx 16rpx rgba(124, 77, 255, 0.3);
+  flex-shrink: 0;
+}
+
+.step-icon {
+  font-size: 36rpx;
+  color: #fff;
+}
+
+.step-info {
+  flex: 1;
+  padding-top: 4rpx;
+}
+
+.step-title {
+  font-size: 30rpx;
+  font-weight: 700;
+  color: #111827;
+  display: block;
+  margin-bottom: 8rpx;
+}
+
+.step-desc {
+  font-size: 25rpx;
+  color: #6B7280;
+  line-height: 1.5;
+  display: block;
+}
+
+.step-line {
+  width: 4rpx;
+  height: 36rpx;
+  background: #E5E7EB;
+  margin: 10rpx 0 10rpx 38rpx;
+}
+
+/* 常见问题 (手风琴) */
+.faq-list {
+  display: flex;
+  flex-direction: column;
+  gap: 20rpx;
+}
+
+.faq-item {
+  background: #F9FAFB;
+  border: 1rpx solid #F3F4F6;
+  border-radius: 16rpx;
+  overflow: hidden;
+  transition: all 0.2s;
+}
+
+.faq-item.expanded {
+  background: #FFFFFF;
+  border-color: #E5E7EB;
+  box-shadow: 0 4rpx 16rpx rgba(0, 0, 0, 0.05);
+}
+
+.faq-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 24rpx 28rpx;
+}
+
+.faq-question {
+  font-size: 28rpx;
+  font-weight: 600;
+  color: #1F2937;
+  flex: 1;
+  padding-right: 16rpx;
+}
+
+.faq-arrow {
+  font-size: 22rpx;
+  color: #9CA3AF;
+}
+
+.faq-body {
+  padding: 0 28rpx 24rpx 28rpx;
+  border-top: 1rpx solid #F3F4F6;
+  margin-top: 4rpx;
+  padding-top: 16rpx;
+}
+
+.faq-answer {
+  font-size: 26rpx;
+  color: #4B5563;
+  line-height: 1.6;
+  display: block;
 }

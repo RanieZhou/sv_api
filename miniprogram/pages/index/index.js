@@ -18,6 +18,34 @@ Page({
     videoAd: null, // 激励广告实例
     noticeText: '', // 滚动通知文本
     showNotice: false, // 是否显示滚动通知
+    faqList: [
+      {
+        id: 1,
+        question: '为什么有些视频无法解析？',
+        answer: '部分平台会更新防护策略，可能导致暂时失败，我们会持续维护。受版权限制的内容也可能无法解析。',
+        expanded: false
+      },
+      {
+        id: 2,
+        question: '下载的视频仍有水印怎么办？',
+        answer: '若仍有水印，可能是平台策略变化导致去水印逻辑需更新，欢迎反馈以便我们尽快处理。',
+        expanded: false
+      },
+      {
+        id: 3,
+        question: '解析和下载是否收费？',
+        answer: '本小程序服务免费。请警惕声称「高级解析」的收费陷阱。',
+        expanded: false
+      }
+    ]
+  },
+
+  // 切换常见问题展开/收起
+  toggleFaq(e) {
+    const index = e.currentTarget.dataset.index
+    const faqList = this.data.faqList
+    faqList[index].expanded = !faqList[index].expanded
+    this.setData({ faqList })
   },
 
   onLoad() {
