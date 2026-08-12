@@ -215,6 +215,47 @@ Page({
     }, 2000)
   },
 
+  async proceedWithDownload(videoUrl) {
+    const { parseResult } = this.data
+    const targetUrl = videoUrl || (parseResult && parseResult.videoUrl)
+    if (!targetUrl) return
+
+    this.setData({ isDownloading: true, downloadProgress: 0, downloadStage: 'downloading', downloadStageText: '正在下载视频...' })
+
+    try {
+      await downloadVideoWithProxy(targetUrl, parseResult.title, this.updateDownloadProgress.bind(this))
+    } catch (error) {
+      console.error('下载失败:', error)
+      this.setData({ isDownloading: false, downloadStage: 'failed', downloadStageText: '下载失败' })
+      wx.showModal({
+        title: '下载失败',
+        content: error.message + '\n\n是否复制代理链接？',
+        confirmText: '复制链接',
+        cancelText: '取消',
+        success: (res) => { if (res.confirm) this.copyVideoUrl() }
+      })
+    }
+  },
+
+  updateDownloadProgress(progress) {
+    const { percent, stage } = progress
+    let stageText = ''
+    switch (stage) {
+      case 'downloading': stageText = `正在下载... ${percent}%`; break
+      case 'saving': stageText = '正在保存到相册...'; break
+      case 'completed':
+        stageText = '下载完成！'
+        setTimeout(() => this.setData({ isDownloading: false }), 1500)
+        wx.showToast({ title: '视频已保存到相册', icon: 'success', duration: 2000 })
+        break
+      case 'failed':
+        stageText = '下载失败'
+        this.setData({ isDownloading: false })
+        break
+    }
+    this.setData({ downloadProgress: Math.max(0, Math.min(100, percent)), downloadStage: stage, downloadStageText: stageText })
+  },
+
   async proceedWithSaveImages() {
     const { parseResult } = this.data
     const authRes = await new Promise(resolve => wx.authorize({ scope: 'scope.writePhotosAlbum', success: () => resolve(true), fail: () => resolve(false) }))
