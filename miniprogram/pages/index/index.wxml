@@ -24,7 +24,7 @@
   <view class="parse-card">
     <view class="card-header">
       <text class="card-title">🎬 短视频去水印</text>
-      <text class="card-sub">支持抖音、快手、西瓜等平台</text>
+      <text class="card-sub">支持抖音、Bilibili、视频号等平台</text>
     </view>
 
     <!-- 文本输入框 -->
@@ -44,11 +44,11 @@
     <view class="action-row">
       <button class="action-btn paste-btn" bindtap="pasteUrl">
         <text class="action-icon">📋</text>
-        <text>粘贴内容</text>
+        <text>粘贴</text>
       </button>
       <button class="action-btn history-btn" bindtap="navigateToHistory">
         <text class="action-icon">🕒</text>
-        <text>历史记录</text>
+        <text>历史</text>
       </button>
       <button class="action-btn clear-btn" bindtap="clearUrl">
         <text class="action-icon">🗑️</text>
