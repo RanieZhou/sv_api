@@ -43,7 +43,31 @@ CREATE TABLE IF NOT EXISTS `api_logs` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='接口调用日志表';
 
 -- ============================================================
--- 3. 初始测试 Key (包含演示测试账号)
+-- 3. banners (轮播图管理表)
+-- ============================================================
+CREATE TABLE IF NOT EXISTS `banners` (
+  `id`         INT(11)      NOT NULL AUTO_INCREMENT          COMMENT '主键ID',
+  `title`      VARCHAR(100) NOT NULL DEFAULT ''              COMMENT '标题',
+  `image_url`  TEXT         NOT NULL                         COMMENT '图片URL',
+  `link_url`   TEXT                  DEFAULT ''              COMMENT '跳转链接',
+  `sort_order` INT(11)               DEFAULT 0               COMMENT '排序',
+  `is_active`  TINYINT(1)            DEFAULT 1               COMMENT '状态：1=启用 0=禁用',
+  `created_at` DATETIME              DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='轮播图管理表';
+
+-- ============================================================
+-- 4. system_config (系统与小程序/广告设置表)
+-- ============================================================
+CREATE TABLE IF NOT EXISTS `system_config` (
+  `config_key`   VARCHAR(64)  NOT NULL                       COMMENT '配置项 Key',
+  `config_value` LONGTEXT     NOT NULL                       COMMENT '配置项 JSON 值',
+  `updated_at`   DATETIME     DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  PRIMARY KEY (`config_key`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='系统与小程序/广告设置表';
+
+-- ============================================================
+-- 5. 初始测试数据
 -- ============================================================
 INSERT INTO `api_keys` (`api_key`, `user_name`, `status`, `total_quota`, `used_quota`, `expire_time`, `note`)
 VALUES (
