@@ -377,10 +377,24 @@ function checkAlbumAuth() {
   });
 }
 
+/**
+ * 获取符合微信小程序 downloadFile 合法域名的代理下载 URL
+ * 解决微信小程序 downloadFile 对 HTTP 协议以及非白名单域名的限制
+ * (例如快手 http://ws2.a.kwimgs.com 等第三方 CDN)
+ */
+function getProxyDownloadUrl(originalUrl) {
+  if (!originalUrl) return '';
+  if (originalUrl.includes('shortvideo.aihubzone.cn')) {
+    return originalUrl;
+  }
+  return getApiUrl('/proxy') + '?url=' + encodeURIComponent(originalUrl);
+}
+
 function downloadFile(url, onProgress = null) {
   return new Promise((resolve, reject) => {
+    const finalUrl = getProxyDownloadUrl(url);
     const downloadTask = wx.downloadFile({
-      url: url,
+      url: finalUrl,
       success: resolve,
       fail: reject
     });
@@ -435,6 +449,7 @@ function debounce(func, wait) {
 module.exports = {
   parseDouyinVideo,
   getProxyVideoUrl,
+  getProxyDownloadUrl,
   extractDouyinUrl,
   downloadVideoWithProxy,
   checkAlbumAuth,

@@ -1,5 +1,5 @@
 const app = getApp()
-const { parseDouyinVideo, downloadVideoWithProxy, getProxyVideoUrl, extractDouyinUrl, debounce, testApiConnection, handleApiError } = require('../../utils/douyin.js')
+const { parseDouyinVideo, downloadVideoWithProxy, getProxyVideoUrl, getProxyDownloadUrl, extractDouyinUrl, debounce, testApiConnection, handleApiError } = require('../../utils/douyin.js')
 const { getApiUrl, getServerUrl } = require('../../config/env.js')
 
 Page({
@@ -720,9 +720,10 @@ Page({
     let successCount = 0
     for (let i = 0; i < images.length; i++) {
       try {
+        const downloadUrl = getProxyDownloadUrl(images[i])
         await new Promise((resolve, reject) => {
           wx.downloadFile({
-            url: images[i],
+            url: downloadUrl,
             success: (dlRes) => {
               if (dlRes.statusCode === 200) {
                 wx.saveImageToPhotosAlbum({
