@@ -20,6 +20,38 @@ async function loadAlipayConfig() {
   }
 }
 
+function formatPrivateKey(key = '') {
+  let str = (key || '').trim();
+  if (!str) return '';
+  if (str.includes('BEGIN PRIVATE KEY') || str.includes('BEGIN RSA PRIVATE KEY')) {
+    const raw = str.replace(/-----BEGIN (RSA )?PRIVATE KEY-----/g, '')
+                   .replace(/-----END (RSA )?PRIVATE KEY-----/g, '')
+                   .replace(/\s+/g, '');
+    return `-----BEGIN PRIVATE KEY-----\n${raw.match(/.{1,64}/g).join('\n')}\n-----END PRIVATE KEY-----`;
+  }
+  if (!str.includes('-----')) {
+    const raw = str.replace(/\s+/g, '');
+    return `-----BEGIN PRIVATE KEY-----\n${raw.match(/.{1,64}/g).join('\n')}\n-----END PRIVATE KEY-----`;
+  }
+  return str;
+}
+
+function formatPublicKey(key = '') {
+  let str = (key || '').trim();
+  if (!str) return '';
+  if (str.includes('BEGIN PUBLIC KEY')) {
+    const raw = str.replace(/-----BEGIN PUBLIC KEY-----/g, '')
+                   .replace(/-----END PUBLIC KEY-----/g, '')
+                   .replace(/\s+/g, '');
+    return `-----BEGIN PUBLIC KEY-----\n${raw.match(/.{1,64}/g).join('\n')}\n-----END PUBLIC KEY-----`;
+  }
+  if (!str.includes('-----')) {
+    const raw = str.replace(/\s+/g, '');
+    return `-----BEGIN PUBLIC KEY-----\n${raw.match(/.{1,64}/g).join('\n')}\n-----END PUBLIC KEY-----`;
+  }
+  return str;
+}
+
 /**
  * 获取支付宝 SDK 实例
  * @returns {Promise<AlipaySdk|null>}
@@ -40,9 +72,9 @@ export async function getAlipayInstance() {
   const isSandbox = cfg.sandbox === true || cfg.sandbox === 'true';
 
   cachedSdk = new AlipaySdk({
-    appId: cfg.appId,
-    privateKey: cfg.privateKey,
-    alipayPublicKey: cfg.alipayPublicKey,
+    appId: cfg.appId.trim(),
+    privateKey: formatPrivateKey(cfg.privateKey),
+    alipayPublicKey: formatPublicKey(cfg.alipayPublicKey),
     gateway: isSandbox
       ? 'https://openapi-sandbox.dl.alipaydev.com/gateway.do'
       : 'https://openapi.alipay.com/gateway.do',
