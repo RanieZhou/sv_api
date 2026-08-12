@@ -67,13 +67,39 @@ function testApiConnection() {
 }
 
 /**
+ * 获取或动态拉取小程序站长配置的 API Key
+ */
+function getOrFetchApiKey(userApiKey = '') {
+  return new Promise((resolve) => {
+    if (userApiKey) return resolve(userApiKey);
+
+    const cachedKey = wx.getStorageSync('user_api_key') || wx.getStorageSync('station_api_key');
+    if (cachedKey) return resolve(cachedKey);
+
+    wx.request({
+      url: getApiUrl('/system/interface-config'),
+      method: 'GET',
+      timeout: 5000,
+      success: (res) => {
+        const k = res.data?.data?.api_key || res.data?.data?.apiKey || '';
+        if (k) {
+          wx.setStorageSync('station_api_key', k);
+        }
+        resolve(k);
+      },
+      fail: () => resolve('')
+    });
+  });
+}
+
+/**
  * 解析短视频
  * @param {string} shareContent - 分享内容
  * @param {string} apiKey - 可选的 API Key
  * @returns {Promise} 解析结果
  */
 function parseDouyinVideo(shareContent, apiKey = '') {
-  return new Promise((resolve, reject) => {
+  return new Promise(async (resolve, reject) => {
     try {
       // 从包含描述的完整分享文本中提取 URL
       const cleanUrl = extractDouyinUrl(shareContent);
@@ -82,11 +108,12 @@ function parseDouyinVideo(shareContent, apiKey = '') {
         return;
       }
       
-      console.log('正在提交解析链接:', cleanUrl);
+      const finalApiKey = await getOrFetchApiKey(apiKey);
+      console.log('正在提交解析链接:', cleanUrl, 'API Key:', finalApiKey ? finalApiKey.slice(0, 10) + '...' : '未传递');
       
       const reqData = { url: cleanUrl };
-      if (apiKey) {
-        reqData.api_key = apiKey;
+      if (finalApiKey) {
+        reqData.api_key = finalApiKey;
       }
       
       wx.request({
