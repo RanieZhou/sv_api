@@ -788,6 +788,9 @@ Page({
       unitIndex++
     }
     
+    return `${size.toFixed(1)} ${units[unitIndex]}`
+  },
+
   // 转发给好友
   onShareAppMessage() {
     return {
@@ -803,5 +806,4 @@ Page({
       path: '/pages/index/index'
     }
   }
-
 }) 
