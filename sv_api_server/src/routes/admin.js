@@ -474,4 +474,68 @@ router.post('/alipay-config', adminAuth, async (req, res) => {
   }
 });
 
+// 邮箱配置：读取（授权码脱敏）
+router.get('/email-config', adminAuth, async (req, res) => {
+  try {
+    const row = await queryOne("SELECT config_value FROM system_config WHERE config_key = 'email_config'", []);
+    if (!row) {
+      return res.json({ code: 200, msg: 'ok', data: null, configured: false });
+    }
+    const cfg = JSON.parse(row.config_value);
+    const masked = {
+      qqNumber: cfg.qqNumber || '',
+      authCode: cfg.authCode ? '******' : ''
+    };
+    return res.json({ code: 200, msg: 'ok', data: masked, configured: true });
+  } catch (err) {
+    return res.status(500).json({ code: 500, msg: '读取邮箱配置失败' });
+  }
+});
+
+// 邮箱配置：保存
+router.post('/email-config', adminAuth, async (req, res) => {
+  try {
+    const { qqNumber, authCode } = req.body;
+    if (!qqNumber) {
+      return res.status(400).json({ code: 400, msg: 'QQ 号码不能为空' });
+    }
+
+    let finalAuthCode = authCode;
+    if (authCode.startsWith('******')) {
+      const oldRow = await queryOne("SELECT config_value FROM system_config WHERE config_key = 'email_config'", []);
+      if (oldRow) {
+        const oldCfg = JSON.parse(oldRow.config_value);
+        finalAuthCode = oldCfg.authCode || authCode;
+      }
+    }
+
+    const cfgJson = JSON.stringify({ qqNumber: qqNumber.trim(), authCode: finalAuthCode.trim() });
+    await execute(
+      "INSERT INTO system_config (config_key, config_value) VALUES ('email_config', ?) ON CONFLICT(config_key) DO UPDATE SET config_value = excluded.config_value, updated_at = DATETIME('now', 'localtime')",
+      [cfgJson]
+    );
+
+    return res.json({ code: 200, msg: 'QQ 邮箱配置已保存' });
+  } catch (err) {
+    console.error('保存邮箱配置失败:', err);
+    return res.status(500).json({ code: 500, msg: '保存失败: ' + err.message });
+  }
+});
+
+// 邮箱配置：测试发送邮件
+router.post('/email-test', adminAuth, async (req, res) => {
+  try {
+    const { targetEmail } = req.body;
+    if (!targetEmail) {
+      return res.status(400).json({ code: 400, msg: '请输入收件人邮箱' });
+    }
+    const { sendVerificationCode } = await import('../utils/mailer.js');
+    const result = await sendVerificationCode(targetEmail.trim());
+    return res.json({ code: 200, msg: result.message || '测试邮件发送成功！' });
+  } catch (err) {
+    console.error('发送测试邮件失败:', err);
+    return res.status(500).json({ code: 500, msg: '发送失败: ' + err.message });
+  }
+});
+
 export default router;

@@ -100,8 +100,15 @@
         <input type="password" class="form-input" id="authPassword" placeholder="请输入密码" />
       </div>
       <div class="form-group" id="emailGroup" style="display: none;">
-        <label class="form-label">电子邮箱 (选填)</label>
-        <input type="email" class="form-input" id="authEmail" placeholder="用于接收订单通知" />
+        <label class="form-label">电子邮箱 (注册必填)</label>
+        <div style="display: flex; gap: 0.5rem;">
+          <input type="email" class="form-input" id="authEmail" placeholder="例如：user@qq.com" style="flex: 1;" />
+          <button type="button" class="btn-copy" id="btnSendCode" style="padding: 0.5rem 0.8rem; background: #38bdf8; color: #0f172a; font-weight: 700; white-space: nowrap;" onclick="sendEmailCode()">获取验证码</button>
+        </div>
+        <div class="form-group" style="margin-top: 0.75rem;">
+          <label class="form-label">邮箱 6 位验证码</label>
+          <input type="text" class="form-input" id="authEmailCode" placeholder="请输入收到的 6 位数字验证码" maxlength="6" />
+        </div>
       </div>
 
       <button class="btn-buy" id="btnAuthSubmit" onclick="handleAuthSubmit()">登录</button>
@@ -265,10 +272,69 @@
       }
     }
 
+    let codeCountdownTimer = null;
+
+    async function sendEmailCode() {
+      const email = document.getElementById('authEmail').value.trim();
+      if (!email) {
+        alert('请填写接收验证码的电子邮箱');
+        return;
+      }
+
+      const btn = document.getElementById('btnSendCode');
+      btn.disabled = true;
+      btn.innerText = '发送中...';
+
+      try {
+        const res = await fetch('/api/store/send-code', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email })
+        });
+        const json = await res.json();
+
+        if (json.success) {
+          alert('🎉 验证码已发送至您的邮箱，请前往查收！');
+          let seconds = 60;
+          btn.innerText = `${seconds}s 后重试`;
+          codeCountdownTimer = setInterval(() => {
+            seconds--;
+            if (seconds <= 0) {
+              clearInterval(codeCountdownTimer);
+              btn.disabled = false;
+              btn.innerText = '获取验证码';
+            } else {
+              btn.innerText = `${seconds}s 后重试`;
+            }
+          }, 1000);
+        } else {
+          alert(json.message || '发送验证码失败');
+          btn.disabled = false;
+          btn.innerText = '获取验证码';
+        }
+      } catch (e) {
+        alert('发送验证码请求失败');
+        btn.disabled = false;
+        btn.innerText = '获取验证码';
+      }
+    }
+
     async function handleAuthSubmit() {
       const username = document.getElementById('authUsername').value.trim();
       const password = document.getElementById('authPassword').value.trim();
       const email = document.getElementById('authEmail').value.trim();
+      const code = document.getElementById('authEmailCode').value.trim();
+
+      if (authMode === 'register') {
+        if (!email) {
+          alert('注册账号必须填写电子邮箱！');
+          return;
+        }
+        if (!code) {
+          alert('请输入 6 位邮箱验证码！');
+          return;
+        }
+      }
 
       if (!username || !password) {
         alert('请输入用户名和密码');
@@ -276,11 +342,15 @@
       }
 
       const url = authMode === 'login' ? '/api/store/login' : '/api/store/register';
+      const bodyPayload = authMode === 'login' 
+        ? { username, password }
+        : { username, password, email, code };
+
       try {
         const res = await fetch(url, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ username, password, email })
+          body: JSON.stringify(bodyPayload)
         });
         const json = await res.json();
         if (json.success && json.data) {
@@ -291,12 +361,12 @@
           updateUserUI();
           loadMyKeys();
           loadMyOrders();
-          alert(authMode === 'login' ? '登录成功！' : '注册成功！');
+          alert(authMode === 'login' ? '登录成功！' : '🎉 注册成功！已为您自动登录');
         } else {
           alert(json.message || '操作失败');
         }
       } catch (e) {
-        alert('网络请求失败');
+        alert('请求失败，请稍后再试');
       }
     }
 

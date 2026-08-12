@@ -62,25 +62,77 @@ router.get('/packages', (req, res) => {
   return res.json({ code: 200, success: true, data: PACKAGES });
 });
 
-// 2. 售卖用户注册
+// 2. 发送邮箱验证码
+router.post('/send-code', async (req, res) => {
+  try {
+    const { email } = req.body;
+    if (!email || !email.trim()) {
+      return res.status(400).json({ code: 400, success: false, message: '请填写邮箱地址' });
+    }
+
+    const trimmedEmail = email.trim().toLowerCase();
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(trimmedEmail)) {
+      return res.status(400).json({ code: 400, success: false, message: '邮箱格式不正确' });
+    }
+
+    // 检查邮箱是否已被注册
+    const existingEmail = await queryOne('SELECT id FROM store_users WHERE email = ?', [trimmedEmail]);
+    if (existingEmail) {
+      return res.status(400).json({ code: 400, success: false, message: '该邮箱地址已被注册，请直接登录' });
+    }
+
+    const { sendVerificationCode } = await import('../utils/mailer.js');
+    const result = await sendVerificationCode(trimmedEmail);
+
+    return res.json({ code: 200, success: true, message: result.message });
+  } catch (err) {
+    console.error('发送验证码失败:', err.message);
+    return res.status(400).json({ code: 400, success: false, message: err.message || '发送验证码失败' });
+  }
+});
+
+// 3. 售卖用户注册 (要求必填邮箱与邮箱验证码)
 router.post('/register', async (req, res) => {
   try {
-    const { username, password, email = '' } = req.body;
+    const { username, password, email, code } = req.body;
+    if (!email || !email.trim()) {
+      return res.status(400).json({ code: 400, success: false, message: '邮箱地址为必填项' });
+    }
+    if (!code || !code.trim()) {
+      return res.status(400).json({ code: 400, success: false, message: '请输入 6 位邮箱验证码' });
+    }
     if (!username || !username.trim() || !password || !password.trim()) {
       return res.status(400).json({ code: 400, success: false, message: '用户名和密码不能为空' });
     }
 
     const trimmedUser = username.trim();
-    const existing = await queryOne('SELECT id FROM store_users WHERE username = ?', [trimmedUser]);
-    if (existing) {
+    const trimmedEmail = email.trim().toLowerCase();
+
+    // 校验邮箱验证码
+    const { verifyVerificationCode } = await import('../utils/mailer.js');
+    const checkRes = verifyVerificationCode(trimmedEmail, code.trim());
+    if (!checkRes.valid) {
+      return res.status(400).json({ code: 400, success: false, message: checkRes.message });
+    }
+
+    // 检查用户名
+    const existingUser = await queryOne('SELECT id FROM store_users WHERE username = ?', [trimmedUser]);
+    if (existingUser) {
       return res.status(400).json({ code: 400, success: false, message: '该用户名已被注册' });
     }
 
-    // 简单 md5 哈希密码
+    // 检查邮箱
+    const existingEmail = await queryOne('SELECT id FROM store_users WHERE email = ?', [trimmedEmail]);
+    if (existingEmail) {
+      return res.status(400).json({ code: 400, success: false, message: '该邮箱已被注册' });
+    }
+
+    // 哈希密码并插入用户
     const hashedPassword = crypto.createHash('sha256').update(password).digest('hex');
     const result = await execute(
       'INSERT INTO store_users (username, password, email) VALUES (?, ?, ?)',
-      [trimmedUser, hashedPassword, email.trim()]
+      [trimmedUser, hashedPassword, trimmedEmail]
     );
 
     const userId = result.insertId || result.lastID;
@@ -89,10 +141,10 @@ router.post('/register', async (req, res) => {
     return res.json({
       code: 200,
       success: true,
-      message: '注册成功',
+      message: '注册成功！已为您自动登录',
       data: {
         token,
-        user: { id: userId, username: trimmedUser, email: email.trim() }
+        user: { id: userId, username: trimmedUser, email: trimmedEmail }
       }
     });
   } catch (err) {

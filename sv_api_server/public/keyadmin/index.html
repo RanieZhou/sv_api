@@ -107,6 +107,12 @@
             <i class="fa-solid fa-wallet"></i> 支付宝配置
           </button>
           <button
+            @click="currentTab = 'email'; fetchEmailConfig()"
+            :class="['px-4 py-2 rounded-lg text-sm font-medium transition-all flex items-center gap-2', currentTab === 'email' ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/30' : 'text-slate-400 hover:text-white']"
+          >
+            <i class="fa-solid fa-envelope"></i> 邮箱配置
+          </button>
+          <button
             @click="currentTab = 'logs'"
             :class="['px-4 py-2 rounded-lg text-sm font-medium transition-all flex items-center gap-2', currentTab === 'logs' ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/30' : 'text-slate-400 hover:text-white']"
           >
@@ -436,6 +442,71 @@
           </div>
         </div>
 
+        <!-- 6. 邮箱配置 View (用于商城注册验证码) -->
+        <div v-if="currentTab === 'email'" class="space-y-6">
+          <div class="glass-card p-6 rounded-2xl space-y-6">
+            <div class="flex items-center justify-between border-b border-slate-800 pb-4">
+              <h2 class="text-lg font-bold text-white flex items-center gap-2">
+                <i class="fa-solid fa-envelope text-cyan-400"></i> QQ 邮箱发件配置 (商城注册验证码)
+              </h2>
+              <span :class="['px-3 py-1 rounded-full text-xs font-semibold', emailForm.configured ? 'bg-emerald-500/20 text-emerald-400' : 'bg-amber-500/20 text-amber-400']">
+                {{ emailForm.configured ? '✅ 已配置生效' : '⚠️ 暂未配置' }}
+              </span>
+            </div>
+
+            <!-- 说明组件 -->
+            <div class="p-4 bg-cyan-950/40 border border-cyan-800/50 rounded-xl text-xs text-cyan-200 space-y-1.5">
+              <div class="font-bold text-sm text-cyan-400">💡 QQ 邮箱配置指引：</div>
+              <p>1. 登录 QQ 邮箱 (mail.qq.com) → 点击顶部「设置」→ 选择「账户」标签页；</p>
+              <p>2. 找到「POP3/IMAP/SMTP/Exchange/CardDAV/CalDAV服务」选项；</p>
+              <p>3. 开启 <strong>POP3/SMTP服务</strong> 或 <strong>IMAP/SMTP服务</strong>，按提示获取 16 位授权码；</p>
+              <p>4. 在下方填入您的 <strong>QQ 号码</strong> 及获取到的 <strong>16位授权码</strong>，保存后即可发信。</p>
+            </div>
+
+            <!-- 表单内容 -->
+            <div class="space-y-5">
+              <div>
+                <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">发件 QQ 号码</label>
+                <input
+                  type="text"
+                  v-model="emailForm.qqNumber"
+                  placeholder="例如：12345678 或 12345678@qq.com"
+                  class="w-full px-4 py-2.5 bg-slate-900 border border-slate-700 rounded-xl text-white text-sm focus:outline-none focus:border-cyan-500 font-mono"
+                />
+              </div>
+
+              <div>
+                <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">QQ 邮箱 SMTP 授权码</label>
+                <input
+                  type="password"
+                  v-model="emailForm.authCode"
+                  placeholder="例如：abcdefghijklmnop (16位授权码)"
+                  class="w-full px-4 py-2.5 bg-slate-900 border border-slate-700 rounded-xl text-white text-sm focus:outline-none focus:border-cyan-500 font-mono"
+                />
+                <p v-if="emailForm.configured" class="text-xs text-amber-400 mt-1">• 若显示 `******` 保持留空，保存时将继续使用原有授权码</p>
+              </div>
+
+              <div class="pt-4 flex flex-wrap items-center gap-4">
+                <button
+                  @click="saveEmailConfig"
+                  :disabled="emailSaving"
+                  class="px-6 py-3 bg-gradient-to-r from-cyan-500 to-indigo-500 text-white font-bold rounded-xl shadow-lg shadow-cyan-500/25 hover:opacity-90 transition-all flex items-center gap-2"
+                >
+                  <i v-if="emailSaving" class="fa-solid fa-spinner animate-spin"></i>
+                  <span>{{ emailSaving ? '保存中...' : '💾 保存邮箱配置' }}</span>
+                </button>
+
+                <button
+                  @click="openTestEmailModal"
+                  class="px-5 py-3 bg-slate-800 hover:bg-slate-700 text-cyan-400 font-medium rounded-xl border border-slate-700 transition-all flex items-center gap-2 text-sm"
+                >
+                  <i class="fa-solid fa-paper-plane"></i> 发送测试验证码邮件
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
         <!-- 6. 调用日志 View -->
         <div v-if="currentTab === 'logs'" class="space-y-6">
           <div class="glass-card p-6 rounded-2xl space-y-4">
@@ -571,6 +642,70 @@
           alipayPublicKey: ''
         });
         const alipaySaving = ref(false);
+
+        // 邮箱配置表单
+        const emailForm = reactive({
+          configured: false,
+          qqNumber: '',
+          authCode: ''
+        });
+        const emailSaving = ref(false);
+
+        // 读取邮箱配置
+        async function fetchEmailConfig() {
+          const res = await apiRequest('/api/admin/email-config');
+          if (res.code === 200 && res.data) {
+            emailForm.configured = true;
+            emailForm.qqNumber = res.data.qqNumber || '';
+            emailForm.authCode = res.data.authCode || '';
+          }
+        }
+
+        // 保存邮箱配置
+        async function saveEmailConfig() {
+          if (!emailForm.qqNumber.trim()) {
+            ElementPlus.ElMessage.warning('请输入 QQ 号码');
+            return;
+          }
+          if (!emailForm.configured && !emailForm.authCode.trim()) {
+            ElementPlus.ElMessage.warning('请输入 16 位 QQ 邮箱授权码');
+            return;
+          }
+          emailSaving.value = true;
+          try {
+            const res = await apiRequest('/api/admin/email-config', 'POST', {
+              qqNumber: emailForm.qqNumber.trim(),
+              authCode: emailForm.authCode.trim()
+            });
+            if (res.code === 200) {
+              ElementPlus.ElMessage.success('QQ 邮箱配置保存成功！');
+              fetchEmailConfig();
+            } else {
+              ElementPlus.ElMessage.error(res.msg || '保存失败');
+            }
+          } catch (e) {
+            ElementPlus.ElMessage.error('保存请求失败');
+          } finally {
+            emailSaving.value = false;
+          }
+        }
+
+        // 测试发送邮件
+        async function openTestEmailModal() {
+          const email = prompt('请输入用于接收测试验证码的邮箱地址：');
+          if (!email || !email.trim()) return;
+          try {
+            ElementPlus.ElMessage.info('正在发送测试邮件，请稍候...');
+            const res = await apiRequest('/api/admin/email-test', 'POST', { targetEmail: email.trim() });
+            if (res.code === 200) {
+              ElementPlus.ElMessage.success(res.msg || '测试邮件发送成功！');
+            } else {
+              ElementPlus.ElMessage.error(res.msg || '发送失败');
+            }
+          } catch (e) {
+            ElementPlus.ElMessage.error('测试请求失败: ' + e.message);
+          }
+        }
 
         // 弹窗表单
         const createModalVisible = ref(false);
@@ -894,6 +1029,7 @@
           ordersList, ordersTotal, ordersSearch, fetchOrders,
           storeUsersList, storeUsersTotal, storeUsersSearch, fetchStoreUsers,
           alipayForm, alipaySaving, fetchAlipayConfig, saveAlipayConfig,
+          emailForm, emailSaving, fetchEmailConfig, saveEmailConfig, openTestEmailModal,
           createModalVisible, createForm, editModalVisible, editForm,
           handleLogin, logout, fetchStats, fetchKeys, fetchLogs,
           openCreateModal, submitCreateKey, openEditModal, submitEditKey,
