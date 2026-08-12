@@ -264,9 +264,6 @@ router.post('/create-alipay-order', storeAuth, async (req, res) => {
     );
 
     // 调用支付宝 alipay.trade.precreate 生成二维码
-    const result = await alipaySdk.exec('alipay.trade.precreate', {
-      bizContent: {
-        out_trade_no: orderNo,
     const reqHost = req.get('host') || 'shortvideo.aihubzone.cn';
     const protocol = req.protocol === 'https' || req.get('x-forwarded-proto') === 'https' ? 'https' : 'http';
     const notifyUrl = `${protocol}://${reqHost}/api/store/alipay-notify`;
