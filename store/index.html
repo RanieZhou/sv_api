@@ -514,16 +514,23 @@
             tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: #94a3b8;">暂无购买订单记录</td></tr>';
             return;
           }
-          tbody.innerHTML = list.map(item => `
+          tbody.innerHTML = list.map(item => {
+            const isPaid = item.pay_status === 1 || !!item.api_key;
+            return `
             <tr>
               <td class="code-box">${item.order_no}</td>
               <td style="font-weight: 600;">${item.package_name}</td>
               <td style="color: #4ade80; font-weight: 700;">￥${item.amount}</td>
-              <td class="code-box">${item.api_key}</td>
+              <td class="code-box">${item.api_key || '待支付生成'}</td>
               <td>${item.createdDisplay}</td>
-              <td><span class="status-tag active">交易成功</span></td>
+              <td>
+                <span class="status-tag ${isPaid ? 'active' : 'expired'}" style="${isPaid ? '' : 'background: rgba(245, 158, 11, 0.15); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.3);'}">
+                  ${isPaid ? '✅ 交易成功' : '⏳ 待支付'}
+                </span>
+              </td>
             </tr>
-          `).join('');
+          `;
+          }).join('');
         }
       } catch (e) {
         console.error('加载订单失败:', e);

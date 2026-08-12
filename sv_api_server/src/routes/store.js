@@ -353,7 +353,7 @@ router.get('/my-keys', storeAuth, async (req, res) => {
 router.get('/my-orders', storeAuth, async (req, res) => {
   try {
     const list = await queryAll(
-      `SELECT id, order_no, package_name, amount, quota, expire_days, api_key, status, created_at
+      `SELECT id, order_no, package_name, amount, quota, expire_days, api_key, status, pay_status, created_at
        FROM orders WHERE user_id = ? ORDER BY id DESC`,
       [req.user.id]
     );
