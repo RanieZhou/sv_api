@@ -52,14 +52,14 @@
       </button>
     </view>
 
-    <!-- 开始提取 -->
+    <!-- 开始解析 -->
     <button
       class="extract-btn {{!canParse ? 'disabled' : ''}}"
       bindtap="parseVideo"
       disabled="{{!canParse || isLoading}}"
       loading="{{isLoading}}"
     >
-      {{isLoading ? '解析中...' : '开始提取'}}
+      {{isLoading ? '解析中...' : '开始解析'}}
     </button>
   </view>
 
@@ -91,7 +91,7 @@
         </view>
         <view class="step-info">
           <text class="step-title">粘贴并解析</text>
-          <text class="step-desc">回到本小程序，将链接粘贴到输入框，可选对应平台接口。</text>
+          <text class="step-desc">回到本小程序，将链接粘贴到输入框。</text>
         </view>
       </view>
 

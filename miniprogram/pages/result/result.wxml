@@ -56,7 +56,7 @@ module.exports = { fmtNum: fmtNum, fmtFans: fmtFans, fmtDur: fmtDur };
       disabled="{{!canParse || isLoading}}"
       loading="{{isLoading}}"
     >
-      {{isLoading ? '解析中...' : '开始提取'}}
+      {{isLoading ? '解析中...' : '开始解析'}}
     </button>
   </view>
 
