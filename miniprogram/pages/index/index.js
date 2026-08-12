@@ -389,6 +389,9 @@ Page({
       }
       app.globalData.lastParseResult = formattedData
 
+      // 保存到本地历史记录
+      this.saveToHistory(formattedData)
+
       wx.hideLoading()
 
       // 跳转到结果页
@@ -400,6 +403,47 @@ Page({
       handleApiError(error, '视频解析')
     } finally {
       this.setData({ isLoading: false })
+    }
+  },
+
+  // 跳转到历史记录页面
+  navigateToHistory() {
+    wx.navigateTo({ url: '/pages/history/history' })
+  },
+
+  // 保存解析记录到本地缓存
+  saveToHistory(formattedData) {
+    try {
+      let history = wx.getStorageSync('parse_history') || []
+      // 过滤掉同一链接的旧记录，保持最新在前
+      history = history.filter(item => item.originalUrl !== formattedData.originalUrl)
+
+      const now = new Date()
+      const month = (now.getMonth() + 1).toString().padStart(2, '0')
+      const day = now.getDate().toString().padStart(2, '0')
+      const hours = now.getHours().toString().padStart(2, '0')
+      const minutes = now.getMinutes().toString().padStart(2, '0')
+      const timeStr = `${month}-${day} ${hours}:${minutes}`
+
+      const newRecord = {
+        id: Date.now(),
+        title: formattedData.title || '短视频作品',
+        author: formattedData.author || '未知作者',
+        cover: formattedData.cover || '',
+        type: formattedData.type || 'video',
+        originalUrl: formattedData.originalUrl || '',
+        parseResult: formattedData,
+        time: timeStr
+      }
+
+      history.unshift(newRecord)
+      if (history.length > 50) {
+        history = history.slice(0, 50)
+      }
+
+      wx.setStorageSync('parse_history', history)
+    } catch (e) {
+      console.error('保存历史记录失败:', e)
     }
   },
 

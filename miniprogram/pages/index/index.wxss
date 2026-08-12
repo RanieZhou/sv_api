@@ -132,6 +132,11 @@ page {
   color: #4A7EE6;
 }
 .paste-btn::after { border: none; }
+.history-btn {
+  background: #EEF2FF;
+  color: #4F46E5;
+}
+.history-btn::after { border: none; }
 .clear-btn {
   background: #FFF0F0;
   color: #E06060;

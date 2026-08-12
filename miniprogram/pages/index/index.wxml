@@ -40,15 +40,19 @@
       ></textarea>
     </view>
 
-    <!-- 粘贴 / 清空 -->
+    <!-- 粘贴 / 历史 / 清空 -->
     <view class="action-row">
       <button class="action-btn paste-btn" bindtap="pasteUrl">
         <text class="action-icon">📋</text>
         <text>粘贴内容</text>
       </button>
+      <button class="action-btn history-btn" bindtap="navigateToHistory">
+        <text class="action-icon">🕒</text>
+        <text>历史记录</text>
+      </button>
       <button class="action-btn clear-btn" bindtap="clearUrl">
         <text class="action-icon">🗑️</text>
-        <text>清空内容</text>
+        <text>清空</text>
       </button>
     </view>
 
