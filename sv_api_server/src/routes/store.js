@@ -3,6 +3,7 @@ import crypto from 'crypto';
 import jwt from 'jsonwebtoken';
 import { queryOne, queryAll, execute } from '../db.js';
 import { config } from '../config.js';
+import { formatShanghaiDateTime, getShanghaiExpireDateTime } from '../utils/date.js';
 
 const router = express.Router();
 const STORE_JWT_SECRET = config.jwtSecret || 'sv_api_store_jwt_secret_2026';
@@ -316,8 +317,7 @@ async function issueKeyForOrder(order) {
 
     let expireTimeStr = null;
     if (expireDays > 0) {
-      const expireDate = new Date(Date.now() + expireDays * 24 * 3600 * 1000);
-      expireTimeStr = expireDate.toISOString().slice(0, 19).replace('T', ' ');
+      expireTimeStr = getShanghaiExpireDateTime(expireDays);
     }
 
     try {
@@ -444,27 +444,21 @@ router.get('/my-keys', storeAuth, async (req, res) => {
     const now = Date.now();
     const formattedList = list.map(item => {
       let isExpired = false;
+      let expireDisplay = '永不过期';
+
       if (item.expire_time) {
-        let s = typeof item.expire_time === 'string' ? item.expire_time.trim() : (item.expire_time.toISOString ? item.expire_time.toISOString() : String(item.expire_time));
-        if (/^\d{4}-\d{2}-\d{2}\s\d{2}:\d{2}:\d{2}$/.test(s)) {
-          s = s.replace(' ', 'T') + 'Z';
+        const formatted = formatShanghaiDateTime(item.expire_time);
+        if (formatted) {
+          expireDisplay = formatted;
+          // 比较到期状态
+          const d = new Date(formatted.replace(' ', 'T') + '+08:00');
+          if (!isNaN(d.getTime())) {
+            isExpired = d.getTime() < now;
+          }
         }
-        isExpired = new Date(s).getTime() < now;
       }
 
       const remainingQuota = item.total_quota === -1 ? '不限次数' : Math.max(0, item.total_quota - item.used_quota);
-
-      let expireDisplay = '永不过期';
-      if (item.expire_time) {
-        let s = typeof item.expire_time === 'string' ? item.expire_time.trim() : (item.expire_time.toISOString ? item.expire_time.toISOString() : String(item.expire_time));
-        if (/^\d{4}-\d{2}-\d{2}\s\d{2}:\d{2}:\d{2}$/.test(s)) {
-          s = s.replace(' ', 'T') + 'Z';
-        }
-        const d = new Date(s);
-        if (!isNaN(d.getTime())) {
-          expireDisplay = d.toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai', hour12: false });
-        }
-      }
 
       return {
         ...item,

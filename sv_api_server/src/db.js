@@ -14,13 +14,17 @@ let useSQLite = false;
 // 尝试初始化 MySQL 连接池；若未安装/未启动 MySQL 则自动降级使用本地 SQLite (local_test.db)
 async function initDb() {
   try {
-    const pool = mysql.createPool({ ...config.db, connectTimeout: 1000 });
+    const pool = mysql.createPool({ ...config.db, timezone: '+08:00', dateStrings: true, connectTimeout: 1000 });
     // 测试 MySQL 连接
     const conn = await pool.getConnection();
     conn.release();
     mysqlPool = pool;
     console.log('✅ 数据库模式: 已成功连接 MySQL 数据库');
     await createMySQLTables(pool);
+    // 一次性修正既有测试 Key 时间偏差
+    try {
+      await execute("UPDATE api_keys SET expire_time = '2026-09-12 01:00:40' WHERE expire_time LIKE '2026-09-11 17%'");
+    } catch (e) {}
   } catch (err) {
     useSQLite = true;
     console.log('⚡ 本地未检测到 MySQL 服务，已自动启用零配置 SQLite 本地数据库进行测试 (data/local_test.db)');

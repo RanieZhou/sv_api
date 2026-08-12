@@ -2,6 +2,7 @@ import express from 'express';
 import crypto from 'crypto';
 import { config } from '../config.js';
 import { queryOne, queryAll, execute } from '../db.js';
+import { formatShanghaiDateTime, getShanghaiExpireDateTime } from '../utils/date.js';
 
 const router = express.Router();
 
@@ -129,10 +130,19 @@ router.get('/keys', adminAuth, async (req, res) => {
 
     const now = Date.now();
     const formattedList = list.map((item) => {
-      const isExpired = item.expire_time ? new Date(item.expire_time).getTime() < now : false;
+      const formattedExpire = item.expire_time ? formatShanghaiDateTime(item.expire_time) : null;
+      let isExpired = false;
+      if (formattedExpire) {
+        const d = new Date(formattedExpire.replace(' ', 'T') + '+08:00');
+        if (!isNaN(d.getTime())) {
+          isExpired = d.getTime() < now;
+        }
+      }
       const remainingQuota = item.total_quota === -1 ? -1 : Math.max(0, item.total_quota - item.used_quota);
       return {
         ...item,
+        expire_time: formattedExpire,
+        created_at: item.created_at ? formatShanghaiDateTime(item.created_at) : item.created_at,
         remaining_quota: remainingQuota,
         is_expired: isExpired,
       };
@@ -168,9 +178,7 @@ router.post('/keys', adminAuth, async (req, res) => {
     let expireTime = null;
 
     if (parseInt(expire_days, 10) > 0) {
-      const d = new Date();
-      d.setDate(d.getDate() + parseInt(expire_days, 10));
-      expireTime = d.toISOString().slice(0, 19).replace('T', ' ');
+      expireTime = getShanghaiExpireDateTime(parseInt(expire_days, 10));
     }
 
     await execute(
@@ -219,12 +227,12 @@ router.put('/keys/:id', adminAuth, async (req, res) => {
       if (days === 0) {
         sets.push('expire_time = NULL');
       } else {
-        const base = keyRow.expire_time && new Date(keyRow.expire_time).getTime() > Date.now()
-          ? new Date(keyRow.expire_time)
-          : new Date();
-        base.setDate(base.getDate() + days);
+        const baseMs = keyRow.expire_time && new Date(keyRow.expire_time).getTime() > Date.now()
+          ? new Date(keyRow.expire_time).getTime()
+          : Date.now();
+        const targetMs = baseMs + days * 24 * 3600 * 1000;
         sets.push('expire_time = ?');
-        params.push(base.toISOString().slice(0, 19).replace('T', ' '));
+        params.push(formatShanghaiDateTime(new Date(targetMs)));
       }
     }
 
