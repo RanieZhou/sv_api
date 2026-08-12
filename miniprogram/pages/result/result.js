@@ -16,6 +16,13 @@ Page({
   },
 
   onLoad() {
+    // 开启页面分享与朋友圈转发功能
+    if (wx.showShareMenu) {
+      wx.showShareMenu({
+        withShareTicket: true,
+        menus: ['shareAppMessage', 'shareTimeline']
+      })
+    }
     // 从 globalData 取上一次解析结果
     const result = app.globalData.lastParseResult
     if (result) {
@@ -385,11 +392,20 @@ Page({
     wx.setClipboardData({ data: url, success: () => wx.showToast({ title: '链接已复制', icon: 'success' }) })
   },
 
-  // ===== 工具函数 =====
-  formatDuration(seconds) {
-    if (!seconds) return ''
-    const m = Math.floor(seconds / 60)
-    const s = seconds % 60
-    return `${m}:${String(s).padStart(2, '0')}`
+  // ===== 转发分享 =====
+  onShareAppMessage() {
+    const title = this.data.parseResult?.title || '免费短视频无水印解析下载';
+    return {
+      title: `⚡ ${title}`,
+      path: '/pages/index/index'
+    }
   },
+
+  onShareTimeline() {
+    const title = this.data.parseResult?.title || '免费短视频无水印解析下载';
+    return {
+      title: `⚡ ${title}`,
+      path: '/pages/index/index'
+    }
+  }
 })

@@ -49,6 +49,13 @@ Page({
   },
 
   onLoad() {
+    // 开启页面分享与朋友圈转发功能
+    if (wx.showShareMenu) {
+      wx.showShareMenu({
+        withShareTicket: true,
+        menus: ['shareAppMessage', 'shareTimeline']
+      })
+    }
     this.loadBanners()
     this.loadMiniprogramConfig()
     // 初始化激励广告
@@ -781,8 +788,20 @@ Page({
       unitIndex++
     }
     
-    return `${size.toFixed(1)} ${units[unitIndex]}`
+  // 转发给好友
+  onShareAppMessage() {
+    return {
+      title: '⚡ 云边去水印 - 免费短视频无水印下载工具',
+      path: '/pages/index/index'
+    }
   },
 
+  // 分享到朋友圈
+  onShareTimeline() {
+    return {
+      title: '⚡ 云边去水印 - 支持抖音/快手/B站/小红书/微信视频号无水印解析',
+      path: '/pages/index/index'
+    }
+  }
 
 }) 
