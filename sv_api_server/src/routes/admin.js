@@ -458,10 +458,12 @@ router.post('/alipay-config', adminAuth, async (req, res) => {
     }
 
     const cfgJson = JSON.stringify({ appId, privateKey: finalPrivateKey, alipayPublicKey: finalAlipayPublicKey, sandbox: !!sandbox });
-    await execute(
-      "INSERT INTO system_config (config_key, config_value) VALUES ('alipay_config', ?) ON CONFLICT(config_key) DO UPDATE SET config_value = excluded.config_value, updated_at = DATETIME('now', 'localtime')",
-      [cfgJson]
-    );
+    const existingAlipay = await queryOne("SELECT config_key FROM system_config WHERE config_key = 'alipay_config'", []);
+    if (existingAlipay) {
+      await execute("UPDATE system_config SET config_value = ? WHERE config_key = 'alipay_config'", [cfgJson]);
+    } else {
+      await execute("INSERT INTO system_config (config_key, config_value) VALUES ('alipay_config', ?)", [cfgJson]);
+    }
 
     // 清除 SDK 实例缓存，使新配置立即生效
     const { clearAlipayCache } = await import('../utils/alipayInstance.js');
@@ -510,10 +512,12 @@ router.post('/email-config', adminAuth, async (req, res) => {
     }
 
     const cfgJson = JSON.stringify({ qqNumber: qqNumber.trim(), authCode: finalAuthCode.trim() });
-    await execute(
-      "INSERT INTO system_config (config_key, config_value) VALUES ('email_config', ?) ON CONFLICT(config_key) DO UPDATE SET config_value = excluded.config_value, updated_at = DATETIME('now', 'localtime')",
-      [cfgJson]
-    );
+    const existingEmail = await queryOne("SELECT config_key FROM system_config WHERE config_key = 'email_config'", []);
+    if (existingEmail) {
+      await execute("UPDATE system_config SET config_value = ? WHERE config_key = 'email_config'", [cfgJson]);
+    } else {
+      await execute("INSERT INTO system_config (config_key, config_value) VALUES ('email_config', ?)", [cfgJson]);
+    }
 
     return res.json({ code: 200, msg: 'QQ 邮箱配置已保存' });
   } catch (err) {
