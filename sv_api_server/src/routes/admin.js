@@ -46,26 +46,56 @@ router.get('/stats', adminAuth, async (req, res) => {
     const totalKeysObj  = await queryOne('SELECT COUNT(*) as cnt FROM api_keys');
     const activeKeysObj = await queryOne('SELECT COUNT(*) as cnt FROM api_keys WHERE status = 1');
     const totalCallsObj = await queryOne('SELECT COALESCE(SUM(used_quota), 0) as cnt FROM api_keys');
-    const todayCallsObj = await queryOne('SELECT COUNT(*) as cnt FROM api_logs WHERE created_at >= CURDATE()');
+
+    // 今日调用 (兼容 MySQL 与 SQLite)
+    let todayCallsObj;
+    try {
+      todayCallsObj = await queryOne('SELECT COUNT(*) as cnt FROM api_logs WHERE created_at >= CURDATE()');
+    } catch (e) {
+      todayCallsObj = await queryOne("SELECT COUNT(*) as cnt FROM api_logs WHERE created_at >= date('now', 'start of day')");
+    }
     
-    // 最近 7 天调用排行
-    const recentLogs = await queryAll(
-      `SELECT DATE(created_at) as date, COUNT(*) as count 
-       FROM api_logs 
-       WHERE created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY) 
-       GROUP BY DATE(created_at) 
-       ORDER BY date ASC`
+    // 最近 7 天调用趋势
+    let recentLogs;
+    try {
+      recentLogs = await queryAll(
+        `SELECT DATE(created_at) as date, COUNT(*) as count 
+         FROM api_logs 
+         WHERE created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY) 
+         GROUP BY DATE(created_at) 
+         ORDER BY date ASC`
+      );
+    } catch (e) {
+      recentLogs = await queryAll(
+        `SELECT strftime('%Y-%m-%d', created_at) as date, COUNT(*) as count 
+         FROM api_logs 
+         WHERE created_at >= date('now', '-7 days') 
+         GROUP BY strftime('%Y-%m-%d', created_at) 
+         ORDER BY date ASC`
+      );
+    }
+
+    // 状态码占比分布
+    const statusCodeLogs = await queryAll(
+      `SELECT status_code, COUNT(*) as count FROM api_logs GROUP BY status_code`
+    );
+
+    // Top 5 常用 API Key 榜单
+    const topKeys = await queryAll(
+      `SELECT user_name, api_key, used_quota FROM api_keys ORDER BY used_quota DESC LIMIT 5`
     );
 
     return res.json({
       code: 200,
       msg: 'ok',
       data: {
-        total_keys: totalKeysObj.cnt || 0,
-        active_keys: activeKeysObj.cnt || 0,
-        total_calls: parseInt(totalCallsObj.cnt, 10) || 0,
-        today_calls: todayCallsObj.cnt || 0,
-        chart_7d: recentLogs,
+        total_keys: totalKeysObj ? (totalKeysObj.cnt || 0) : 0,
+        active_keys: activeKeysObj ? (activeKeysObj.cnt || 0) : 0,
+        total_calls: totalCallsObj ? (parseInt(totalCallsObj.cnt, 10) || 0) : 0,
+        today_calls: todayCallsObj ? (todayCallsObj.cnt || 0) : 0,
+        chart_7d: recentLogs || [],
+        status_codes: statusCodeLogs || [],
+        top_keys: topKeys || []
       },
     });
   } catch (err) {
