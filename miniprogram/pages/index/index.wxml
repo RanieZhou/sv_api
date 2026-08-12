@@ -10,6 +10,16 @@
     </swiper>
   </view>
 
+  <!-- 滚动通知栏 -->
+  <view class="notice-section" wx:if="{{showNotice && noticeText}}">
+    <view class="notice-bar">
+      <text class="notice-icon">📢</text>
+      <view class="notice-content">
+        <text class="notice-text">{{noticeText}}</text>
+      </view>
+    </view>
+  </view>
+
   <!-- 主解析卡片 -->
   <view class="parse-card">
     <view class="card-header">

@@ -16,17 +16,51 @@ Page({
     downloadStage: '', // 下载阶段: downloading, saving, completed, failed
     downloadStageText: '', // 下载阶段文本
     videoAd: null, // 激励广告实例
+    noticeText: '', // 滚动通知文本
+    showNotice: false, // 是否显示滚动通知
   },
 
   onLoad() {
     this.loadBanners()
+    this.loadMiniprogramConfig()
     // 初始化激励广告
     this.initRewardedVideoAd()
   },
 
   onShow() {
-    // 每次显示页面时检查剪贴板
+    // 每次显示页面时检查剪贴板与更新配置通知
     this.checkClipboard()
+    this.loadMiniprogramConfig()
+  },
+
+  // 获取小程序基础设置与滚动通知
+  loadMiniprogramConfig() {
+    wx.request({
+      url: getApiUrl('/system/miniprogram-config'),
+      method: 'GET',
+      header: {
+        'Accept': 'application/json'
+      },
+      success: (res) => {
+        if (res.statusCode === 200 && res.data && res.data.success) {
+          const config = res.data.data || {}
+          const noticeText = config.noticeText || ''
+          const showNotice = !!(config.noticeStatus !== false && noticeText.trim().length > 0)
+
+          this.setData({
+            noticeText,
+            showNotice
+          })
+
+          if (config.appName) {
+            wx.setNavigationBarTitle({ title: config.appName })
+          }
+        }
+      },
+      fail: (err) => {
+        console.log('⚠️ 获取小程序配置失败:', err)
+      }
+    })
   },
 
   // 加载轮播图 - 从后端API获取真实数据
