@@ -294,74 +294,53 @@ Page({
     const { inputUrl } = this.data
     
     this.setData({ isLoading: true })
-    wx.showLoading({
-      title: '正在解析视频...',
-      mask: true
-    })
+    wx.showLoading({ title: '正在解析...', mask: true })
 
     try {
-      console.log('开始解析抖音视频:', inputUrl)
-      
-      // 使用符合接口文档规范的解析工具
       const videoData = await parseDouyinVideo(inputUrl)
-      
-      console.log('解析成功，视频数据:', videoData)
 
-      // 完整解析结果，包含所有可展示字段
+      // 把解析结果存入 globalData，result 页面从这里取
       const formattedData = {
         success: true,
         type: videoData.type || 'video',
         title: videoData.title || '短视频作品',
-        // 作者信息
         author: videoData.author || '未知作者',
         authorAvatar: videoData.authorAvatar || '',
         authorId: videoData.authorId || '',
         followerCount: videoData.followerCount || 0,
-        // 媒体资源
         videoUrl: videoData.videoUrl || '',
         cover: videoData.cover || '',
         proxyVideoUrl: videoData.proxyVideoUrl,
         images: videoData.images || [],
-        // 视频参数
         duration: videoData.duration || 0,
         size: videoData.size || 0,
-        // 互动数据
         likeCount: videoData.likeCount || 0,
         commentCount: videoData.commentCount || 0,
         collectCount: videoData.collectCount || 0,
         shareCount: videoData.shareCount || 0,
-        // 附加信息
         hashtags: videoData.hashtags || [],
         musicTitle: videoData.musicTitle || '',
         musicAuthor: videoData.musicAuthor || '',
         createTime: videoData.createTime || '',
-        // 清晰度选项
         qualityOptions: videoData.qualityOptions || [],
         originalUrl: inputUrl
       }
-      
-      this.setData({
-        parseResult: formattedData
-      })
-      
+      app.globalData.lastParseResult = formattedData
+
       wx.hideLoading()
-      wx.showToast({
-        title: '解析成功！',
-        icon: 'success'
-      })
+
+      // 跳转到结果页
+      wx.navigateTo({ url: '/pages/result/result' })
 
     } catch (error) {
       console.error('解析失败:', error)
-      
       wx.hideLoading()
-      
-      // 使用统一的错误处理
       handleApiError(error, '视频解析')
-      
     } finally {
       this.setData({ isLoading: false })
     }
   },
+
 
   // 下载戧6米视频（支持清晰度选择）
   async downloadVideo() {

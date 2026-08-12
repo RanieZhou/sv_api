@@ -3,11 +3,10 @@ App({
   globalData: {
     userInfo: null,
     openid: null,
-    // 本地开发环境使用本地后端API地址
     baseUrl: 'https://shuiyin.lingjing235.cn',
-    // 广告观看状态
     adWatched: false,
-    lastAdWatchTime: 0
+    lastAdWatchTime: 0,
+    lastParseResult: null   // 页面间传递解析结果
   },
 
   onLaunch() {

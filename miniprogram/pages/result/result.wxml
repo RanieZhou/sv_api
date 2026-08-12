@@ -1,0 +1,241 @@
+<!-- 解析结果页 -->
+<view class="page">
+
+  <!-- 顶部：重新解析区域 -->
+  <view class="top-card">
+    <view class="input-wrap">
+      <textarea
+        class="url-textarea"
+        placeholder="粘贴新链接可重新解析"
+        placeholder-class="textarea-ph"
+        value="{{inputUrl}}"
+        bindinput="onUrlInput"
+        auto-height
+        maxlength="2000"
+      ></textarea>
+    </view>
+    <view class="btn-row">
+      <button class="sm-btn paste-btn" bindtap="pasteUrl">
+        <text>📋 粘贴内容</text>
+      </button>
+      <button class="sm-btn clear-btn" bindtap="clearUrl">
+        <text>🗑️ 清空内容</text>
+      </button>
+    </view>
+    <button
+      class="extract-btn {{(!canParse || isLoading) ? 'disabled' : ''}}"
+      bindtap="doExtract"
+      disabled="{{!canParse || isLoading}}"
+      loading="{{isLoading}}"
+    >
+      {{isLoading ? '解析中...' : '开始提取'}}
+    </button>
+  </view>
+
+  <!-- 加载中占位 -->
+  <view class="loading-area" wx:if="{{isLoading}}">
+    <view class="loading-spin"></view>
+    <text class="loading-txt">正在解析，请稍候...</text>
+  </view>
+
+  <!-- 结果展示区 -->
+  <view class="result-card" wx:if="{{parseResult && !isLoading}}">
+
+    <!-- 作者信息行 -->
+    <view class="author-bar">
+      <image class="author-avatar" src="{{parseResult.authorAvatar || '/assets/icons/default_avatar.png'}}" mode="aspectFill"></image>
+      <view class="author-meta">
+        <text class="author-name">{{parseResult.author}}</text>
+        <text class="author-fans" wx:if="{{parseResult.followerCount > 0}}">
+          👥 {{parseResult.followerCount >= 10000 ? (parseResult.followerCount / 10000).toFixed(1) + '万粉丝' : parseResult.followerCount + '粉丝'}}
+        </text>
+      </view>
+      <view class="type-badge {{parseResult.type === 'images' ? 'badge-img' : 'badge-vid'}}">
+        {{parseResult.type === 'images' ? '🖼️ 图集' : '🎬 视频'}}
+      </view>
+    </view>
+
+    <!-- Tab 切换栏 -->
+    <view class="tab-bar">
+      <view
+        class="tab-item {{activeTab === 'video' ? 'active' : ''}}"
+        bindtap="switchTab"
+        data-tab="video"
+      >
+        <text>视频</text>
+      </view>
+      <view
+        class="tab-item {{activeTab === 'images' ? 'active' : ''}}"
+        bindtap="switchTab"
+        data-tab="images"
+        wx:if="{{parseResult.images && parseResult.images.length > 0}}"
+      >
+        <text>图片</text>
+        <text class="tab-count">{{parseResult.images.length}}</text>
+      </view>
+      <view
+        class="tab-item {{activeTab === 'info' ? 'active' : ''}}"
+        bindtap="switchTab"
+        data-tab="info"
+      >
+        <text>标题</text>
+      </view>
+    </view>
+
+    <!-- ===== 视频 Tab ===== -->
+    <view class="tab-content" wx:if="{{activeTab === 'video'}}">
+      <!-- 视频播放器 -->
+      <view class="video-wrap" wx:if="{{parseResult.proxyVideoUrl}}">
+        <video
+          class="video-player"
+          src="{{parseResult.proxyVideoUrl}}"
+          poster="{{parseResult.cover}}"
+          controls
+          autoplay="{{false}}"
+          show-center-play-btn="{{true}}"
+          enable-play-gesture="{{true}}"
+        ></video>
+        <view class="video-meta-row" wx:if="{{parseResult.duration > 0}}">
+          <text class="meta-tag">⏱️ {{formatDuration(parseResult.duration)}}</text>
+          <text class="meta-tag" wx:if="{{parseResult.createTime}}">📅 {{parseResult.createTime}}</text>
+        </view>
+      </view>
+      <!-- 封面备用 -->
+      <view class="cover-wrap" wx:elif="{{parseResult.cover}}">
+        <image class="cover-img" src="{{parseResult.cover}}" mode="aspectFill" bindtap="previewCover"></image>
+        <view class="play-mask"><text class="play-icon">▶️</text></view>
+      </view>
+
+      <!-- 互动数据 -->
+      <view class="stats-row" wx:if="{{parseResult.likeCount > 0 || parseResult.commentCount > 0 || parseResult.collectCount > 0}}">
+        <view class="stat-col" wx:if="{{parseResult.likeCount > 0}}">
+          <text class="stat-num">{{parseResult.likeCount >= 10000 ? (parseResult.likeCount / 10000).toFixed(1) + 'w' : parseResult.likeCount}}</text>
+          <text class="stat-lbl">❤️ 点赞</text>
+        </view>
+        <view class="stat-col" wx:if="{{parseResult.commentCount > 0}}">
+          <text class="stat-num">{{parseResult.commentCount >= 10000 ? (parseResult.commentCount / 10000).toFixed(1) + 'w' : parseResult.commentCount}}</text>
+          <text class="stat-lbl">💬 评论</text>
+        </view>
+        <view class="stat-col" wx:if="{{parseResult.collectCount > 0}}">
+          <text class="stat-num">{{parseResult.collectCount >= 10000 ? (parseResult.collectCount / 10000).toFixed(1) + 'w' : parseResult.collectCount}}</text>
+          <text class="stat-lbl">⭐ 收藏</text>
+        </view>
+        <view class="stat-col" wx:if="{{parseResult.shareCount > 0}}">
+          <text class="stat-num">{{parseResult.shareCount >= 10000 ? (parseResult.shareCount / 10000).toFixed(1) + 'w' : parseResult.shareCount}}</text>
+          <text class="stat-lbl">🔗 分享</text>
+        </view>
+      </view>
+
+      <!-- 操作按钮 -->
+      <view class="action-btns">
+        <button class="save-btn" bindtap="downloadVideo" disabled="{{isDownloading}}">
+          <text class="btn-ico">💾</text>
+          <view class="btn-txt">
+            <text>{{isDownloading ? '下载中...' : '保存到相册'}}</text>
+            <text class="quality-sub" wx:if="{{!isDownloading && parseResult.qualityOptions && parseResult.qualityOptions.length > 1}}">可选 {{parseResult.qualityOptions.length}} 种清晰度</text>
+          </view>
+        </button>
+        <button class="copy-btn" bindtap="copyVideoUrl" disabled="{{isDownloading}}">
+          <text class="btn-ico">🔗</text>
+          <text>复制链接</text>
+        </button>
+      </view>
+
+      <!-- 下载进度条 -->
+      <view class="progress-wrap" wx:if="{{isDownloading}}">
+        <view class="progress-info-row">
+          <text class="progress-txt">{{downloadStageText}}</text>
+          <text class="progress-pct" wx:if="{{downloadStage === 'downloading'}}">{{downloadProgress}}%</text>
+        </view>
+        <view class="progress-track">
+          <view class="progress-fill" style="width: {{downloadProgress}}%"></view>
+        </view>
+      </view>
+    </view>
+
+    <!-- ===== 图片 Tab ===== -->
+    <view class="tab-content" wx:elif="{{activeTab === 'images'}}">
+      <view wx:if="{{parseResult.images && parseResult.images.length > 0}}">
+        <swiper
+          class="gallery-swiper"
+          indicator-dots="{{true}}"
+          indicator-color="rgba(255,255,255,0.5)"
+          indicator-active-color="#4A7EE6"
+          circular="{{true}}"
+          duration="{{300}}"
+        >
+          <swiper-item wx:for="{{parseResult.images}}" wx:key="index">
+            <image
+              class="gallery-img"
+              src="{{item}}"
+              mode="aspectFit"
+              bindtap="previewImages"
+              data-index="{{index}}"
+            ></image>
+          </swiper-item>
+        </swiper>
+        <view class="gallery-tip">
+          <text>🖼️ 共 {{parseResult.images.length}} 张 · 点击全屏预览</text>
+        </view>
+        <view class="action-btns">
+          <button class="save-btn full-btn" bindtap="saveImages">
+            <text class="btn-ico">🖼️</text>
+            <text>保存全部图片（{{parseResult.images.length}}张）</text>
+          </button>
+        </view>
+      </view>
+      <view class="empty-hint" wx:else>
+        <text>该内容没有图集</text>
+      </view>
+    </view>
+
+    <!-- ===== 标题 Tab ===== -->
+    <view class="tab-content" wx:elif="{{activeTab === 'info'}}">
+      <!-- 标题 -->
+      <view class="info-block" wx:if="{{parseResult.title}}">
+        <view class="info-label-row">
+          <text class="info-label">📝 标题</text>
+          <button class="copy-mini-btn" bindtap="copyTitle">复制</button>
+        </view>
+        <text class="info-body">{{parseResult.title}}</text>
+      </view>
+
+      <!-- 话题标签 -->
+      <view class="info-block" wx:if="{{parseResult.hashtags && parseResult.hashtags.length > 0}}">
+        <text class="info-label">🏷️ 话题</text>
+        <view class="tag-list">
+          <view class="tag-chip" wx:for="{{parseResult.hashtags}}" wx:key="index">
+            <text>#{{item}}</text>
+          </view>
+        </view>
+      </view>
+
+      <!-- 背景音乐 -->
+      <view class="info-block music-block" wx:if="{{parseResult.musicTitle}}">
+        <text class="music-ico">🎵</text>
+        <view class="music-detail">
+          <text class="music-name">{{parseResult.musicTitle}}</text>
+          <text class="music-by" wx:if="{{parseResult.musicAuthor}}">by {{parseResult.musicAuthor}}</text>
+        </view>
+      </view>
+
+      <!-- 视频信息 -->
+      <view class="info-block">
+        <view class="kv-row" wx:if="{{parseResult.duration > 0}}">
+          <text class="kv-key">⏱️ 时长</text>
+          <text class="kv-val">{{formatDuration(parseResult.duration)}}</text>
+        </view>
+        <view class="kv-row" wx:if="{{parseResult.createTime}}">
+          <text class="kv-key">📅 发布</text>
+          <text class="kv-val">{{parseResult.createTime}}</text>
+        </view>
+        <view class="kv-row">
+          <text class="kv-key">✅ 状态</text>
+          <text class="kv-val success-txt">解析成功，已去除水印</text>
+        </view>
+      </view>
+    </view>
+
+  </view>
+
+</view>

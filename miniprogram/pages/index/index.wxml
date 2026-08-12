@@ -1,6 +1,7 @@
 <!-- 首页 -->
 <view class="container">
-  <!-- 轮播图 - 仅在有内容时显示 -->
+
+  <!-- 轮播图 -->
   <view class="banner-section" wx:if="{{showBanners && banners.length > 0}}">
     <swiper class="banner-swiper" indicator-dots="{{true}}" autoplay="{{true}}" interval="{{3000}}" duration="{{500}}" circular="{{true}}">
       <swiper-item wx:for="{{banners}}" wx:key="id">
@@ -9,294 +10,67 @@
     </swiper>
   </view>
 
-  <!-- 链接输入区域 -->
-  <view class="input-section">
-    <view class="section-title">视频链接解析</view>
-    <view class="input-tip">
-      💡 支持直接粘贴完整的分享文本，系统会自动提取视频链接
+  <!-- 主解析卡片 -->
+  <view class="parse-card">
+    <view class="card-header">
+      <text class="card-title">🎬 短视频去水印</text>
+      <text class="card-sub">支持抖音、快手、西瓜等平台</text>
     </view>
-    <view class="input-container">
-      <textarea 
-        class="url-input" 
-        placeholder="请粘贴视频链接或完整分享文本"
+
+    <!-- 文本输入框 -->
+    <view class="input-wrap">
+      <textarea
+        class="url-textarea"
+        placeholder="粘贴视频链接或分享文字，系统自动识别"
+        placeholder-class="textarea-placeholder"
         value="{{inputUrl}}"
         bindinput="onUrlInput"
         auto-height
         maxlength="2000"
       ></textarea>
-      <view class="input-actions">
-        <button class="paste-btn" bindtap="pasteUrl" size="mini">粘贴</button>
-        <button class="clear-btn" bindtap="clearUrl" size="mini">清空</button>
-      </view>
     </view>
-    
-    <button 
-      class="parse-btn {{!canParse ? 'disabled' : ''}}" 
+
+    <!-- 粘贴 / 清空 -->
+    <view class="action-row">
+      <button class="action-btn paste-btn" bindtap="pasteUrl">
+        <text class="action-icon">📋</text>
+        <text>粘贴内容</text>
+      </button>
+      <button class="action-btn clear-btn" bindtap="clearUrl">
+        <text class="action-icon">🗑️</text>
+        <text>清空内容</text>
+      </button>
+    </view>
+
+    <!-- 开始提取 -->
+    <button
+      class="extract-btn {{!canParse ? 'disabled' : ''}}"
       bindtap="parseVideo"
       disabled="{{!canParse || isLoading}}"
       loading="{{isLoading}}"
     >
-      {{isLoading ? '解析中...' : '开始解析'}}
+      {{isLoading ? '解析中...' : '开始提取'}}
     </button>
   </view>
 
-  <!-- 解析结果 -->
-  <view class="result-section" wx:if="{{parseResult}}">
-    <view class="section-title">🎉 解析成功</view>
-    <view class="result-container">
-
-      <!-- ===== 作者信息栏 ===== -->
-      <view class="author-bar" wx:if="{{parseResult.author}}">
-        <image
-          class="author-avatar"
-          src="{{parseResult.authorAvatar || '/assets/icons/default_avatar.png'}}"
-          mode="aspectFill"
-        ></image>
-        <view class="author-meta">
-          <text class="author-name">{{parseResult.author}}</text>
-          <text class="author-id" wx:if="{{parseResult.authorId}}">ID: {{parseResult.authorId}}</text>
-        </view>
-        <view class="content-type-badge {{parseResult.type === 'images' ? 'badge-image' : 'badge-video'}}">
-          {{parseResult.type === 'images' ? '🖼️ 图集' : '🎬 视频'}}
-        </view>
-      </view>
-
-      <!-- ===== 视频播放器（视频类型） ===== -->
-      <view class="video-player-container" wx:if="{{parseResult.type !== 'images' && parseResult.proxyVideoUrl}}">
-        <video
-          class="video-player"
-          src="{{parseResult.proxyVideoUrl}}"
-          poster="{{parseResult.cover}}"
-          controls
-          autoplay="{{false}}"
-          loop="{{false}}"
-          muted="{{false}}"
-          show-center-play-btn="{{true}}"
-          show-play-btn="{{true}}"
-          enable-play-gesture="{{true}}"
-        ></video>
-      </view>
-
-      <!-- ===== 图集轮播（图集类型） ===== -->
-      <view class="image-gallery-container" wx:elif="{{parseResult.type === 'images' && parseResult.images.length > 0}}">
-        <swiper
-          class="gallery-swiper"
-          indicator-dots="{{true}}"
-          indicator-color="rgba(255,255,255,0.6)"
-          indicator-active-color="#ffffff"
-          circular="{{true}}"
-          duration="{{300}}"
-        >
-          <swiper-item wx:for="{{parseResult.images}}" wx:key="index">
-            <image
-              class="gallery-image"
-              src="{{item}}"
-              mode="aspectFit"
-              bindtap="previewImages"
-              data-index="{{index}}"
-            ></image>
-          </swiper-item>
-        </swiper>
-        <view class="gallery-count">
-          <text class="gallery-icon">🖼️</text>
-          <text>共 {{parseResult.images.length}} 张图片，点击可全屏预览</text>
-        </view>
-      </view>
-
-      <!-- 封面备用（视频但无代理URL） -->
-      <view class="video-cover-container" wx:elif="{{parseResult.cover}}">
-        <image
-          class="video-cover"
-          src="{{parseResult.cover}}"
-          mode="aspectFill"
-          bindtap="previewCover"
-        ></image>
-        <view class="video-duration-overlay" wx:if="{{parseResult.duration > 0}}">
-          {{formatDuration(parseResult.duration)}}
-        </view>
-        <view class="play-overlay">
-          <text class="play-icon">▶️</text>
-        </view>
-      </view>
-
-      <!-- ===== 互动数据统计（有数据时才显示） ===== -->
-      <view class="stats-bar" wx:if="{{parseResult.likeCount > 0 || parseResult.commentCount > 0 || parseResult.collectCount > 0}}">
-        <view class="stat-item" wx:if="{{parseResult.likeCount > 0}}">
-          <text class="stat-icon">❤️</text>
-          <text class="stat-num">{{parseResult.likeCount >= 10000 ? (parseResult.likeCount / 10000).toFixed(1) + 'w' : parseResult.likeCount}}</text>
-          <text class="stat-label">点赞</text>
-        </view>
-        <view class="stat-divider" wx:if="{{parseResult.likeCount > 0 && parseResult.commentCount > 0}}"></view>
-        <view class="stat-item" wx:if="{{parseResult.commentCount > 0}}">
-          <text class="stat-icon">💬</text>
-          <text class="stat-num">{{parseResult.commentCount >= 10000 ? (parseResult.commentCount / 10000).toFixed(1) + 'w' : parseResult.commentCount}}</text>
-          <text class="stat-label">评论</text>
-        </view>
-        <view class="stat-divider" wx:if="{{parseResult.commentCount > 0 && parseResult.collectCount > 0}}"></view>
-        <view class="stat-item" wx:if="{{parseResult.collectCount > 0}}">
-          <text class="stat-icon">⭐</text>
-          <text class="stat-num">{{parseResult.collectCount >= 10000 ? (parseResult.collectCount / 10000).toFixed(1) + 'w' : parseResult.collectCount}}</text>
-          <text class="stat-label">收藏</text>
-        </view>
-        <view class="stat-divider" wx:if="{{parseResult.collectCount > 0 && parseResult.shareCount > 0}}"></view>
-        <view class="stat-item" wx:if="{{parseResult.shareCount > 0}}">
-          <text class="stat-icon">🔗</text>
-          <text class="stat-num">{{parseResult.shareCount >= 10000 ? (parseResult.shareCount / 10000).toFixed(1) + 'w' : parseResult.shareCount}}</text>
-          <text class="stat-label">分享</text>
-        </view>
-      </view>
-
-      <!-- ===== 视频信息 ===== -->
-      <view class="video-info">
-        <view class="video-title" wx:if="{{parseResult.title}}">
-          <view class="info-row">
-            <text class="info-label">📝</text>
-            <text class="info-content">{{parseResult.title}}</text>
-          </view>
-          <button class="copy-info-btn" bindtap="copyTitle" size="mini">
-            <text class="copy-icon">📋</text>
-            <text>复制</text>
-          </button>
-        </view>
-        <view class="info-line" wx:if="{{parseResult.duration > 0}}">
-          <text class="info-label">⏱️ 时长：</text>
-          <text class="info-content">{{formatDuration(parseResult.duration)}}</text>
-        </view>
-        <view class="info-line" wx:if="{{parseResult.createTime}}">
-          <text class="info-label">📅 发布：</text>
-          <text class="info-content">{{parseResult.createTime}}</text>
-        </view>
-        <view class="video-status">
-          <text class="info-label">✅ 状态：</text>
-          <text class="info-content success">解析成功，已去除水印</text>
-        </view>
-      </view>
-
-      <!-- ===== 话题标签 ===== -->
-      <view class="hashtag-section" wx:if="{{parseResult.hashtags && parseResult.hashtags.length > 0}}">
-        <view class="hashtag-list">
-          <view class="hashtag-item" wx:for="{{parseResult.hashtags}}" wx:key="index">
-            <text>#{{item}}</text>
-          </view>
-        </view>
-      </view>
-
-      <!-- ===== 背景音乐 ===== -->
-      <view class="music-card" wx:if="{{parseResult.musicTitle}}">
-        <text class="music-icon">🎵</text>
-        <view class="music-info">
-          <text class="music-title">{{parseResult.musicTitle}}</text>
-          <text class="music-author" wx:if="{{parseResult.musicAuthor}}">{{parseResult.musicAuthor}}</text>
-        </view>
-      </view>
-
-      <!-- ===== 作者详情（粉丝数） ===== -->
-      <view class="author-detail" wx:if="{{parseResult.followerCount > 0}}">
-        <text class="author-detail-icon">👥</text>
-        <text class="author-detail-label">粉丝数</text>
-        <text class="author-detail-value">
-          {{parseResult.followerCount >= 10000 ? (parseResult.followerCount / 10000).toFixed(1) + ' 万' : parseResult.followerCount}}
-        </text>
-      </view>
-
-      <!-- ===== 操作按钮 ===== -->
-      <!-- 视频操作 -->
-      <view class="result-actions" wx:if="{{parseResult.type !== 'images'}}">
-        <button class="download-btn primary" bindtap="downloadVideo" disabled="{{isDownloading}}">
-          <text class="btn-icon">💾</text>
-          <view class="btn-text-wrap">
-            <text>{{isDownloading ? '下载中...' : '保存到相册'}}</text>
-            <text class="quality-hint" wx:if="{{!isDownloading && parseResult.qualityOptions && parseResult.qualityOptions.length > 1}}">
-              可选 {{parseResult.qualityOptions.length}} 种清晰度
-            </text>
-          </view>
-        </button>
-        <button class="copy-btn secondary" bindtap="copyVideoUrl" disabled="{{isDownloading}}">
-          <text class="btn-icon">🔗</text>
-          <text>复制链接</text>
-        </button>
-      </view>
-      <!-- 图集操作 -->
-      <view class="result-actions" wx:elif="{{parseResult.type === 'images'}}">
-        <button class="download-btn primary" bindtap="saveImages">
-          <text class="btn-icon">🖼️</text>
-          <text>保存全部图片 ({{parseResult.images.length}}张)</text>
-        </button>
-      </view>
-
-      <!-- 下载进度条 -->
-      <view class="download-progress-container" wx:if="{{isDownloading}}">
-        <view class="progress-info">
-          <text class="progress-text">{{downloadStageText}}</text>
-          <text class="progress-percent" wx:if="{{downloadStage === 'downloading'}}">{{downloadProgress}}%</text>
-        </view>
-        <view class="progress-bar">
-          <view class="progress-fill" style="width: {{downloadProgress}}%"></view>
-        </view>
-      </view>
-
-      <!-- 提示信息 -->
-      <view class="result-tips">
-        <text class="tip-text">💡 {{parseResult.type === 'images' ? '图集已去除水印，可逐张预览或一键保存' : '视频已去除水印，可直接播放或保存'}}</text>
-      </view>
+  <!-- 功能特性 -->
+  <view class="feature-section">
+    <view class="feature-item">
+      <text class="f-icon">🚫</text>
+      <text class="f-name">去除水印</text>
+    </view>
+    <view class="feature-item">
+      <text class="f-icon">⚡</text>
+      <text class="f-name">秒级解析</text>
+    </view>
+    <view class="feature-item">
+      <text class="f-icon">🎬</text>
+      <text class="f-name">在线预览</text>
+    </view>
+    <view class="feature-item">
+      <text class="f-icon">💾</text>
+      <text class="f-name">一键保存</text>
     </view>
   </view>
 
-  <!-- 抖音特色功能 -->
-  <view class="platform-section">
-    <view class="section-title">🎯 抖音专业解析</view>
-    <view class="feature-grid">
-      <view class="feature-item">
-        <text class="feature-icon">🚫</text>
-        <text class="feature-name">去除水印</text>
-        <text class="feature-desc">完全去除抖音水印</text>
-      </view>
-      <view class="feature-item">
-        <text class="feature-icon">⚡</text>
-        <text class="feature-name">高速解析</text>
-        <text class="feature-desc">秒级解析，即时可用</text>
-      </view>
-      <view class="feature-item">
-        <text class="feature-icon">🎬</text>
-        <text class="feature-name">直接播放</text>
-        <text class="feature-desc">无需下载即可观看</text>
-      </view>
-      <view class="feature-item">
-        <text class="feature-icon">💾</text>
-        <text class="feature-name">保存相册</text>
-        <text class="feature-desc">一键保存到手机</text>
-      </view>
-    </view>
-  </view>
-
-  <!-- 使用说明 -->
-  <view class="tips-section">
-    <view class="section-title">使用说明</view>
-    <view class="tips-content">
-      <view class="tip-item">
-        <text class="tip-number">1</text>
-        <text class="tip-text">在短视频APP中点击"分享"→"复制链接"</text>
-      </view>
-      <view class="tip-item">
-        <text class="tip-number">2</text>
-        <text class="tip-text">直接粘贴完整的分享文本到输入框（无需手动提取链接）</text>
-      </view>
-      <view class="tip-item">
-        <text class="tip-number">3</text>
-        <text class="tip-text">系统自动识别并提取视频链接</text>
-      </view>
-      <view class="tip-item">
-        <text class="tip-number">4</text>
-        <text class="tip-text">点击"开始解析"获取无水印视频下载链接</text>
-      </view>
-    </view>
-  </view>
 </view>
-
-<!-- 加载提示 -->
-<view class="loading-overlay" wx:if="{{isLoading}}">
-  <view class="loading-content">
-    <view class="loading-spinner"></view>
-    <text class="loading-text">正在解析视频...</text>
-  </view>
-</view> 
