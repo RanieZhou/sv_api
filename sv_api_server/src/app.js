@@ -9,6 +9,7 @@ import adminRoutes from './routes/admin.js';
 import proxyRoutes from './routes/proxy.js';
 import bannersRoutes from './routes/banners.js';
 import systemRoutes from './routes/system.js';
+import uploadRoutes from './routes/upload.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -28,6 +29,7 @@ app.use('/api', parseRoutes);
 app.use('/api', proxyRoutes);
 app.use('/api', bannersRoutes);
 app.use('/api', systemRoutes);
+app.use('/api', uploadRoutes);
 app.use('/api/admin', adminRoutes);
 
 // 4. 健康检查

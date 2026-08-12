@@ -115,3 +115,16 @@ export const systemAPI = {
     return api.post('/system/ad-config', data)
   }
 }
+
+// 文件上传相关API
+export const uploadAPI = {
+  uploadImage: (file: File) => {
+    const formData = new FormData()
+    formData.append('file', file)
+    return api.post('/upload', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data'
+      }
+    })
+  }
+}

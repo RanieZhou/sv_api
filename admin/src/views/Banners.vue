@@ -69,16 +69,29 @@
           <el-input v-model="form.title" placeholder="请输入轮播图标题" />
         </el-form-item>
         
-        <el-form-item label="图片链接" prop="imageUrl">
+        <el-form-item label="轮播图片" prop="imageUrl">
           <div class="image-input-section">
+            <div class="upload-actions">
+              <el-upload
+                action=""
+                :http-request="handleCustomUpload"
+                :show-file-list="false"
+                accept="image/*"
+              >
+                <el-button type="primary">
+                  <el-icon><Upload /></el-icon> 选择本地图片上传
+                </el-button>
+              </el-upload>
+            </div>
             <el-input 
               v-model="form.imageUrl" 
-              placeholder="请输入图片URL链接，如：https://example.com/image.jpg"
+              placeholder="上传图片后自动生成URL，也可手动输入图片URL"
+              style="margin-top: 10px;"
               @input="handleImageUrlChange"
             />
             <div class="image-preview" v-if="form.imageUrl">
               <el-image
-                :src="form.imageUrl"
+                :src="getImageUrl(form.imageUrl)"
                 class="preview-image"
                 fit="cover"
                 @error="handlePreviewError"
@@ -92,9 +105,8 @@
               </el-image>
             </div>
             <div class="image-tip">
-              <p>• 请输入完整的图片URL地址</p>
-              <p>• 建议尺寸：800x400像素</p>
-              <p>• 支持 jpg、png、webp 等格式</p>
+              <p>• 点击【选择本地图片上传】直接保存到服务器 `public/uploads` 目录</p>
+              <p>• 建议尺寸：800x400像素，支持 jpg、png、webp 格式</p>
             </div>
           </div>
         </el-form-item>
@@ -125,8 +137,8 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Plus, Picture } from '@element-plus/icons-vue'
-import { bannerAPI } from '../utils/api'
+import { Plus, Picture, Upload } from '@element-plus/icons-vue'
+import { bannerAPI, uploadAPI } from '../utils/api'
 
 interface Banner {
   id?: number
@@ -161,10 +173,10 @@ const rules = {
     { required: true, message: '请输入轮播图标题', trigger: 'blur' }
   ],
   imageUrl: [
-    { required: true, message: '请输入图片URL链接', trigger: 'blur' },
+    { required: true, message: '请选择或输入图片URL', trigger: 'blur' },
     { 
-      pattern: /^https?:\/\/.+\.(jpg|jpeg|png|gif|webp)(\?.*)?$/i, 
-      message: '请输入有效的图片URL链接', 
+      pattern: /^(https?:\/\/|\/uploads\/).+/i, 
+      message: '请输入有效的图片网络链接或选择上传图片', 
       trigger: 'blur' 
     }
   ]
@@ -183,6 +195,23 @@ const handleImageUrlChange = () => {
   // 触发表单验证
   if (formRef.value) {
     formRef.value.validateField('imageUrl')
+  }
+}
+
+// 自定义上传图片文件到服务器静态资源目录
+const handleCustomUpload = async (options: any) => {
+  try {
+    const res = await uploadAPI.uploadImage(options.file)
+    if (res.data.success && res.data.url) {
+      form.value.imageUrl = res.data.url
+      ElMessage.success('图片已成功保存到服务器资源目录！')
+      handleImageUrlChange()
+    } else {
+      ElMessage.error(res.data.msg || '图片上传失败')
+    }
+  } catch (error: any) {
+    console.error('图片上传失败:', error)
+    ElMessage.error(error.response?.data?.msg || '图片上传失败')
   }
 }
 
