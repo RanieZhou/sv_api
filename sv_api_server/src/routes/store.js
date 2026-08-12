@@ -22,8 +22,8 @@ function storeAuth(req, res, next) {
   }
 }
 
-// 套餐定义配置
-const PACKAGES = [
+// 默认套餐定义配置
+export const DEFAULT_PACKAGES = [
   {
     id: 'bronze',
     name: '青铜套餐',
@@ -32,7 +32,9 @@ const PACKAGES = [
     quotaLabel: '1,000 次/月',
     expireDays: 30,
     desc: '适合初创个人小程序与低频体验',
-    badge: '入门优选'
+    badge: '入门优选',
+    popular: false,
+    status: 1
   },
   {
     id: 'silver',
@@ -43,7 +45,8 @@ const PACKAGES = [
     expireDays: 30,
     desc: '适合主流运营小程序与高频调用',
     badge: '🔥 热门推荐',
-    popular: true
+    popular: true,
+    status: 1
   },
   {
     id: 'diamond',
@@ -53,13 +56,38 @@ const PACKAGES = [
     quotaLabel: '不限次数/月',
     expireDays: 30,
     desc: '尊享无限次解析，独立高并发通道',
-    badge: '👑 尊享无限'
+    badge: '👑 尊享无限',
+    popular: false,
+    status: 1
   }
 ];
 
+export async function getStorePackages(includeDisabled = false) {
+  try {
+    const row = await queryOne("SELECT config_value FROM system_config WHERE config_key = 'store_packages'", []);
+    if (row && row.config_value) {
+      const list = JSON.parse(row.config_value);
+      if (Array.isArray(list) && list.length > 0) {
+        if (includeDisabled) return list;
+        return list.filter(item => item.status === 1 || item.status === '1' || item.status === undefined || item.status === true);
+      }
+    }
+  } catch (e) {
+    console.error('读取套餐配置失败:', e);
+  }
+  if (includeDisabled) return DEFAULT_PACKAGES;
+  return DEFAULT_PACKAGES.filter(item => item.status === 1);
+}
+
 // 1. 获取套餐列表
-router.get('/packages', (req, res) => {
-  return res.json({ code: 200, success: true, data: PACKAGES });
+router.get('/packages', async (req, res) => {
+  try {
+    const packages = await getStorePackages(false);
+    return res.json({ code: 200, success: true, data: packages });
+  } catch (err) {
+    console.error('获取套餐列表失败:', err);
+    return res.status(500).json({ code: 500, success: false, message: '获取套餐列表失败' });
+  }
 });
 
 // 2. 发送邮箱验证码
@@ -210,9 +238,10 @@ router.get('/profile', storeAuth, async (req, res) => {
 router.post('/create-alipay-order', storeAuth, async (req, res) => {
   try {
     const { package_id } = req.body;
-    const pkg = PACKAGES.find(p => p.id === package_id);
+    const packages = await getStorePackages(true);
+    const pkg = packages.find(p => String(p.id) === String(package_id));
     if (!pkg) {
-      return res.status(400).json({ code: 400, success: false, message: '无效的套餐类型' });
+      return res.status(400).json({ code: 400, success: false, message: '套餐不存在或已下架' });
     }
 
     // 获取支付宝实例（未配置则返回错误）

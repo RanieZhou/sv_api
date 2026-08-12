@@ -536,9 +536,38 @@ router.post('/email-test', adminAuth, async (req, res) => {
     const { sendVerificationCode } = await import('../utils/mailer.js');
     const result = await sendVerificationCode(targetEmail.trim());
     return res.json({ code: 200, msg: result.message || '测试邮件发送成功！' });
+// 10. 商品/套餐管理：获取所有商品套餐（包含已下架）
+router.get('/packages', adminAuth, async (req, res) => {
+  try {
+    const { getStorePackages } = await import('./store.js');
+    const packages = await getStorePackages(true);
+    return res.json({ code: 200, success: true, data: packages });
   } catch (err) {
-    console.error('发送测试邮件失败:', err);
-    return res.status(500).json({ code: 500, msg: '发送失败: ' + err.message });
+    console.error('获取商品套餐列表失败:', err);
+    return res.status(500).json({ code: 500, msg: '获取商品套餐列表失败: ' + err.message });
+  }
+});
+
+// 11. 商品/套餐管理：保存/更新所有商品套餐
+router.post('/packages', adminAuth, async (req, res) => {
+  try {
+    const { packages } = req.body;
+    if (!Array.isArray(packages)) {
+      return res.status(400).json({ code: 400, msg: '参数格式不正确，packages 必须是数组' });
+    }
+
+    const valStr = JSON.stringify(packages);
+    const existing = await queryOne("SELECT config_key FROM system_config WHERE config_key = 'store_packages'", []);
+    if (existing) {
+      await execute("UPDATE system_config SET config_value = ? WHERE config_key = 'store_packages'", [valStr]);
+    } else {
+      await execute("INSERT INTO system_config (config_key, config_value) VALUES ('store_packages', ?)", [valStr]);
+    }
+
+    return res.json({ code: 200, success: true, msg: '商品套餐配置保存成功' });
+  } catch (err) {
+    console.error('保存商品套餐配置失败:', err);
+    return res.status(500).json({ code: 500, msg: '保存商品套餐配置失败: ' + err.message });
   }
 });
 

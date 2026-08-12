@@ -89,6 +89,12 @@
             <i class="fa-solid fa-key"></i> Key 管理
           </button>
           <button
+            @click="currentTab = 'products'; fetchAdminPackages()"
+            :class="['px-4 py-2 rounded-lg text-sm font-medium transition-all flex items-center gap-2', currentTab === 'products' ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/30' : 'text-slate-400 hover:text-white']"
+          >
+            <i class="fa-solid fa-box-open"></i> 商品管理
+          </button>
+          <button
             @click="currentTab = 'orders'; fetchOrders()"
             :class="['px-4 py-2 rounded-lg text-sm font-medium transition-all flex items-center gap-2', currentTab === 'orders' ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/30' : 'text-slate-400 hover:text-white']"
           >
@@ -589,6 +595,78 @@
           </div>
         </div>
 
+        <!-- 3. 商品/套餐管理 View -->
+        <div v-if="currentTab === 'products'" class="space-y-6">
+          <div class="glass-card p-6 rounded-2xl space-y-4">
+            <div class="flex items-center justify-between border-b border-slate-800 pb-4">
+              <div>
+                <h2 class="text-base font-semibold text-white flex items-center gap-2">
+                  <i class="fa-solid fa-box-open text-cyan-400"></i> 发卡商城商品套餐管理
+                </h2>
+                <p class="text-xs text-slate-400 mt-1">自由配置发卡前端售卖的套餐商品、价格、解析额度及推荐角标</p>
+              </div>
+              <button
+                @click="openAddPackageModal"
+                class="px-4 py-2 bg-gradient-to-r from-cyan-500 to-indigo-500 hover:opacity-90 text-white font-semibold rounded-xl text-xs shadow-lg shadow-cyan-500/20 transition-all flex items-center gap-1.5"
+              >
+                <i class="fa-solid fa-plus"></i> 添加新商品套餐
+              </button>
+            </div>
+
+            <!-- 商品套餐表格 -->
+            <div class="overflow-x-auto">
+              <table class="w-full text-left text-sm border-collapse">
+                <thead>
+                  <tr class="border-b border-slate-800 text-xs text-slate-400 uppercase tracking-wider">
+                    <th class="py-3 px-4">套餐名称与描述</th>
+                    <th class="py-3 px-4">售卖价格</th>
+                    <th class="py-3 px-4">包含解析额度</th>
+                    <th class="py-3 px-4">有效时长</th>
+                    <th class="py-3 px-4">角标与推荐</th>
+                    <th class="py-3 px-4">售卖状态</th>
+                    <th class="py-3 px-4 text-right">操作</th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-800/60 text-xs">
+                  <tr v-for="(item, idx) in adminPackagesList" :key="item.id" class="hover:bg-slate-800/30">
+                    <td class="py-3 px-4">
+                      <div class="font-bold text-white text-sm">{{ item.name }}</div>
+                      <div class="text-slate-400 text-xs mt-0.5">{{ item.desc }}</div>
+                      <div class="text-slate-500 font-mono text-[10px]">ID: {{ item.id }}</div>
+                    </td>
+                    <td class="py-3 px-4 font-bold text-emerald-400 text-sm">￥{{ item.price }}</td>
+                    <td class="py-3 px-4 text-cyan-300 font-semibold">{{ item.quotaLabel || (item.quota === -1 ? '无限次' : item.quota + ' 次/月') }}</td>
+                    <td class="py-3 px-4 text-slate-300">{{ item.expireDays }} 天</td>
+                    <td class="py-3 px-4 space-x-1">
+                      <span v-if="item.badge" class="px-2 py-0.5 bg-indigo-500/20 border border-indigo-500/30 text-indigo-300 rounded text-[11px] font-medium">
+                        {{ item.badge }}
+                      </span>
+                      <span v-if="item.popular" class="px-2 py-0.5 bg-amber-500/20 border border-amber-500/30 text-amber-300 rounded text-[11px] font-bold">
+                        🔥 热门推荐
+                      </span>
+                    </td>
+                    <td class="py-3 px-4">
+                      <span :class="['px-2.5 py-1 rounded-full text-xs font-semibold', (item.status === 1 || item.status === '1' || item.status === true) ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'bg-slate-800 text-slate-400']">
+                        {{ (item.status === 1 || item.status === '1' || item.status === true) ? '已上架' : '已下架' }}
+                      </span>
+                    </td>
+                    <td class="py-3 px-4 text-right space-x-2">
+                      <button @click="openEditPackageModal(item, idx)" class="text-cyan-400 hover:text-cyan-300 font-medium">编辑</button>
+                      <button @click="togglePackageStatus(idx)" :class="[(item.status === 1 || item.status === '1' || item.status === true) ? 'text-amber-400 hover:text-amber-300' : 'text-emerald-400 hover:text-emerald-300', 'font-medium']">
+                        {{ (item.status === 1 || item.status === '1' || item.status === true) ? '下架' : '上架' }}
+                      </button>
+                      <button @click="deletePackageItem(idx)" class="text-rose-400 hover:text-rose-300 font-medium">删除</button>
+                    </td>
+                  </tr>
+                  <tr v-if="adminPackagesList.length === 0">
+                    <td colspan="7" class="py-8 text-center text-slate-500 text-sm">暂无商品套餐数据</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
         <!-- 6. 调用日志 View -->
         <div v-if="currentTab === 'logs'" class="space-y-6">
           <div class="glass-card p-6 rounded-2xl space-y-4">
@@ -676,9 +754,69 @@
           <label class="block text-xs font-medium text-slate-300 mb-1">备注说明</label>
           <input type="text" v-model="editForm.note" placeholder="修改备注" class="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-sm text-white" />
         </div>
+    <!-- 弹窗：新增 / 编辑商品套餐 -->
+    <el-dialog v-model="packageModalVisible" :title="isEditPackage ? '编辑商品套餐' : '添加新商品套餐'" width="550px">
+      <form @submit.prevent="submitSavePackage" class="space-y-4 pt-2">
+        <div class="grid grid-cols-2 gap-4">
+          <div>
+            <label class="block text-xs font-medium text-slate-300 mb-1">套餐标识 (ID)</label>
+            <input type="text" v-model="packageForm.id" :disabled="isEditPackage" placeholder="例如: bronze" class="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-sm text-white disabled:opacity-50" required />
+          </div>
+          <div>
+            <label class="block text-xs font-medium text-slate-300 mb-1">套餐名称</label>
+            <input type="text" v-model="packageForm.name" placeholder="例如: 青铜套餐" class="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-sm text-white" required />
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-4">
+          <div>
+            <label class="block text-xs font-medium text-slate-300 mb-1">售价 (元)</label>
+            <input type="number" step="0.01" v-model.number="packageForm.price" placeholder="例如: 19.9" class="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-sm text-white" required />
+          </div>
+          <div>
+            <label class="block text-xs font-medium text-slate-300 mb-1">解析额度次数 (-1 为无限次)</label>
+            <input type="number" v-model.number="packageForm.quota" placeholder="例如: 1000" class="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-sm text-white" required />
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-4">
+          <div>
+            <label class="block text-xs font-medium text-slate-300 mb-1">有效天数 (从购买日起算)</label>
+            <input type="number" v-model.number="packageForm.expireDays" placeholder="例如: 30" class="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-sm text-white" required />
+          </div>
+          <div>
+            <label class="block text-xs font-medium text-slate-300 mb-1">额度展示标签</label>
+            <input type="text" v-model="packageForm.quotaLabel" placeholder="例如: 1,000 次/月" class="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-sm text-white" required />
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-xs font-medium text-slate-300 mb-1">角标文本 (如: 🔥 热门推荐)</label>
+          <input type="text" v-model="packageForm.badge" placeholder="选填，例如: 入门优选 / 限时特惠" class="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-sm text-white" />
+        </div>
+
+        <div>
+          <label class="block text-xs font-medium text-slate-300 mb-1">套餐简述 (展示在商城卡片)</label>
+          <input type="text" v-model="packageForm.desc" placeholder="例如: 适合初创个人小程序与低频体验" class="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-sm text-white" />
+        </div>
+
+        <div class="flex items-center gap-6 pt-2">
+          <label class="flex items-center gap-2 text-xs font-medium text-slate-300 cursor-pointer">
+            <input type="checkbox" v-model="packageForm.popular" class="w-4 h-4 rounded bg-slate-900 border-slate-700 text-cyan-500 focus:ring-0" />
+            <span>设为热门推荐 (发卡页突出高亮)</span>
+          </label>
+          <label class="flex items-center gap-2 text-xs font-medium text-slate-300 cursor-pointer">
+            <input type="checkbox" v-model="packageForm.status" :true-value="1" :false-value="0" class="w-4 h-4 rounded bg-slate-900 border-slate-700 text-cyan-500 focus:ring-0" />
+            <span>上架销售</span>
+          </label>
+        </div>
+
         <div class="pt-4 flex justify-end gap-2">
-          <button type="button" @click="editModalVisible = false" class="px-4 py-2 border border-slate-700 rounded-lg text-slate-300 text-sm">取消</button>
-          <button type="submit" class="px-4 py-2 bg-cyan-500 text-slate-950 font-semibold rounded-lg text-sm">保存修改</button>
+          <button type="button" @click="packageModalVisible = false" class="px-4 py-2 border border-slate-700 rounded-lg text-slate-300 text-sm">取消</button>
+          <button type="submit" :disabled="packageSaving" class="px-4 py-2 bg-gradient-to-r from-cyan-500 to-indigo-500 text-white font-semibold rounded-lg text-sm flex items-center gap-2">
+            <i v-if="packageSaving" class="fa-solid fa-spinner animate-spin"></i>
+            <span>{{ packageSaving ? '保存中...' : '保存商品套餐' }}</span>
+          </button>
         </div>
       </form>
     </el-dialog>
@@ -826,6 +964,109 @@
             ElementPlus.ElMessage.error('保存请求失败');
           } finally {
             mpSaving.value = false;
+          }
+        }
+
+        // 8. 商品/套餐管理
+        const adminPackagesList = ref([]);
+        const packageModalVisible = ref(false);
+        const isEditPackage = ref(false);
+        const packageEditingIndex = ref(-1);
+        const packageSaving = ref(false);
+
+        const packageForm = reactive({
+          id: '',
+          name: '',
+          price: 19.9,
+          quota: 1000,
+          quotaLabel: '1,000 次/月',
+          expireDays: 30,
+          badge: '',
+          desc: '',
+          popular: false,
+          status: 1
+        });
+
+        async function fetchAdminPackages() {
+          const res = await apiRequest('/api/admin/packages');
+          if (res.code === 200 && Array.isArray(res.data)) {
+            adminPackagesList.value = res.data;
+          }
+        }
+
+        function openAddPackageModal() {
+          isEditPackage.value = false;
+          packageEditingIndex.value = -1;
+          const randId = 'pkg_' + Date.now().toString(36);
+          Object.assign(packageForm, {
+            id: randId,
+            name: '黄金套餐',
+            price: 59.9,
+            quota: 20000,
+            quotaLabel: '20,000 次/月',
+            expireDays: 30,
+            badge: '特惠推荐',
+            desc: '适合高频使用与高并发能力',
+            popular: false,
+            status: 1
+          });
+          packageModalVisible.value = true;
+        }
+
+        function openEditPackageModal(item, idx) {
+          isEditPackage.value = true;
+          packageEditingIndex.value = idx;
+          Object.assign(packageForm, item);
+          packageModalVisible.value = true;
+        }
+
+        async function submitSavePackage() {
+          if (!packageForm.name || !packageForm.name.trim()) {
+            ElementPlus.ElMessage.warning('请输入套餐名称');
+            return;
+          }
+          packageSaving.value = true;
+          try {
+            const list = [...adminPackagesList.value];
+            if (isEditPackage.value && packageEditingIndex.value >= 0) {
+              list[packageEditingIndex.value] = { ...packageForm };
+            } else {
+              list.push({ ...packageForm });
+            }
+            const res = await apiRequest('/api/admin/packages', 'POST', { packages: list });
+            if (res.code === 200 || res.success) {
+              ElementPlus.ElMessage.success('商品套餐保存成功！');
+              adminPackagesList.value = list;
+              packageModalVisible.value = false;
+            } else {
+              ElementPlus.ElMessage.error(res.msg || '保存失败');
+            }
+          } catch (e) {
+            ElementPlus.ElMessage.error('保存请求失败');
+          } finally {
+            packageSaving.value = false;
+          }
+        }
+
+        async function togglePackageStatus(idx) {
+          const list = [...adminPackagesList.value];
+          const current = list[idx].status === 1 || list[idx].status === '1' || list[idx].status === true ? 1 : 0;
+          list[idx].status = current === 1 ? 0 : 1;
+          const res = await apiRequest('/api/admin/packages', 'POST', { packages: list });
+          if (res.code === 200 || res.success) {
+            ElementPlus.ElMessage.success(`已${list[idx].status === 1 ? '上架' : '下架'}该商品套餐`);
+            adminPackagesList.value = list;
+          }
+        }
+
+        async function deletePackageItem(idx) {
+          if (!confirm('确定要删除该商品套餐吗？下架即可暂时隐藏销售。')) return;
+          const list = [...adminPackagesList.value];
+          list.splice(idx, 1);
+          const res = await apiRequest('/api/admin/packages', 'POST', { packages: list });
+          if (res.code === 200 || res.success) {
+            ElementPlus.ElMessage.success('删除成功');
+            adminPackagesList.value = list;
           }
         }
 
@@ -1153,6 +1394,9 @@
           alipayForm, alipaySaving, fetchAlipayConfig, saveAlipayConfig,
           emailForm, emailSaving, fetchEmailConfig, saveEmailConfig, openTestEmailModal,
           mpForm, mpSaving, fetchMiniprogramConfig, saveMiniprogramConfig,
+          adminPackagesList, packageModalVisible, isEditPackage, packageSaving, packageForm,
+          fetchAdminPackages, openAddPackageModal, openEditPackageModal, submitSavePackage,
+          togglePackageStatus, deletePackageItem,
           createModalVisible, createForm, editModalVisible, editForm,
           handleLogin, logout, fetchStats, fetchKeys, fetchLogs,
           openCreateModal, submitCreateKey, openEditModal, submitEditKey,
