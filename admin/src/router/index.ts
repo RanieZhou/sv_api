@@ -1,8 +1,8 @@
-import { createRouter, createWebHistory } from 'vue-router'
+import { createRouter, createWebHashHistory } from 'vue-router'
 import AdminLayout from '@/layouts/AdminLayout.vue'
 
 const router = createRouter({
-  history: createWebHistory(),
+  history: createWebHashHistory(),
   routes: [
     {
       path: '/login',
@@ -41,12 +41,6 @@ const router = createRouter({
           name: 'AdSettings',
           component: () => import('@/views/AdSettings.vue'),
           meta: { title: '流量主设置', requiresAuth: true }
-        },
-        {
-          path: 'alipay-settings',
-          name: 'AlipaySettings',
-          component: () => import('@/views/AlipaySettings.vue'),
-          meta: { title: '支付宝配置', requiresAuth: true }
         }
       ]
     },

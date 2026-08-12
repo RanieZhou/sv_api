@@ -23,8 +23,10 @@ app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// 2. 静态目录（托管后台管理系统与测试页面及售卖商城）
+// 2. 静态目录托管
 app.use(express.static(path.join(__dirname, '../public')));
+app.use('/admin', express.static(path.join(__dirname, '../public/admin')));
+app.use('/keyadmin', express.static(path.join(__dirname, '../public/keyadmin')));
 app.use('/store', express.static(path.join(__dirname, '../../store')));
 
 // 3. 挂载路由
@@ -47,7 +49,8 @@ app.listen(config.port, () => {
   console.log(`=======================================================`);
   console.log(`🚀 SV-API Node.js 服务已在端口 ${config.port} 成功启动！`);
   console.log(`🌐 对外解析接口:  http://localhost:${config.port}/api/parse?url=xxx&api_key=xxx`);
-  console.log(`💻 Key管理后台:    http://localhost:${config.port}/keyadmin/`);
-  console.log(`🧪 在线测试页面:  http://localhost:${config.port}/test.html`);
+  console.log(`📱 小程序管理后台: http://localhost:${config.port}/admin/`);
+  console.log(`🔑 独立 Key 控制台: http://localhost:${config.port}/keyadmin/`);
+  console.log(`🛍️ 授权售卖商城:  http://localhost:${config.port}/store/`);
   console.log(`=======================================================`);
 });
