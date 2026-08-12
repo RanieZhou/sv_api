@@ -123,7 +123,7 @@ router.get('/apiKey/verify', async (req, res) => {
       : `${Math.max(0, row.total_quota - row.used_quota)} 次`;
 
     const expiryDate = row.expire_time
-      ? new Date(row.expire_time).toLocaleString('zh-CN', { hour12: false })
+      ? new Date(row.expire_time).toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai', hour12: false })
       : '永不过期';
 
     return res.json({
