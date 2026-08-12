@@ -185,9 +185,8 @@ const rules = {
 // 获取完整图片URL
 const getImageUrl = (imageUrl: string) => {
   if (!imageUrl) return ''
-  if (imageUrl.startsWith('http')) return imageUrl
-  const apiUrl = (window as any).__VITE_API_URL__ || ''
-  return `${apiUrl}${imageUrl}`
+  if (imageUrl.startsWith('http') || imageUrl.startsWith('//')) return imageUrl
+  return imageUrl
 }
 
 // 处理图片URL输入变化
