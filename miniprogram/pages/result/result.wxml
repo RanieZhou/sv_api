@@ -1,4 +1,32 @@
 <!-- 解析结果页 -->
+
+<!-- WXS：格式化数字（替代 toFixed，WXML 不支持方法调用） -->
+<wxs module="fmt">
+var fmtNum = function(n) {
+  if (!n || n <= 0) return '0';
+  if (n >= 10000) {
+    var wan = Math.floor(n / 1000);
+    return (wan / 10) + 'w';
+  }
+  return '' + n;
+};
+var fmtFans = function(n) {
+  if (!n || n <= 0) return '';
+  if (n >= 10000) {
+    var wan = Math.floor(n / 1000);
+    return '👥 ' + (wan / 10) + '万粉丝';
+  }
+  return '👥 ' + n + '粉丝';
+};
+var fmtDur = function(s) {
+  if (!s) return '';
+  var m = Math.floor(s / 60);
+  var sec = s % 60;
+  return m + ':' + (sec < 10 ? '0' + sec : '' + sec);
+};
+module.exports = { fmtNum: fmtNum, fmtFans: fmtFans, fmtDur: fmtDur };
+</wxs>
+
 <view class="page">
 
   <!-- 顶部：重新解析区域 -->
@@ -46,9 +74,7 @@
       <image class="author-avatar" src="{{parseResult.authorAvatar || '/assets/icons/default_avatar.png'}}" mode="aspectFill"></image>
       <view class="author-meta">
         <text class="author-name">{{parseResult.author}}</text>
-        <text class="author-fans" wx:if="{{parseResult.followerCount > 0}}">
-          👥 {{parseResult.followerCount >= 10000 ? (parseResult.followerCount / 10000).toFixed(1) + '万粉丝' : parseResult.followerCount + '粉丝'}}
-        </text>
+        <text class="author-fans" wx:if="{{parseResult.followerCount > 0}}">{{fmt.fmtFans(parseResult.followerCount)}}</text>
       </view>
       <view class="type-badge {{parseResult.type === 'images' ? 'badge-img' : 'badge-vid'}}">
         {{parseResult.type === 'images' ? '🖼️ 图集' : '🎬 视频'}}
@@ -96,7 +122,7 @@
           enable-play-gesture="{{true}}"
         ></video>
         <view class="video-meta-row" wx:if="{{parseResult.duration > 0}}">
-          <text class="meta-tag">⏱️ {{formatDuration(parseResult.duration)}}</text>
+          <text class="meta-tag">⏱️ {{fmt.fmtDur(parseResult.duration)}}</text>
           <text class="meta-tag" wx:if="{{parseResult.createTime}}">📅 {{parseResult.createTime}}</text>
         </view>
       </view>
@@ -109,19 +135,19 @@
       <!-- 互动数据 -->
       <view class="stats-row" wx:if="{{parseResult.likeCount > 0 || parseResult.commentCount > 0 || parseResult.collectCount > 0}}">
         <view class="stat-col" wx:if="{{parseResult.likeCount > 0}}">
-          <text class="stat-num">{{parseResult.likeCount >= 10000 ? (parseResult.likeCount / 10000).toFixed(1) + 'w' : parseResult.likeCount}}</text>
+          <text class="stat-num">{{fmt.fmtNum(parseResult.likeCount)}}</text>
           <text class="stat-lbl">❤️ 点赞</text>
         </view>
         <view class="stat-col" wx:if="{{parseResult.commentCount > 0}}">
-          <text class="stat-num">{{parseResult.commentCount >= 10000 ? (parseResult.commentCount / 10000).toFixed(1) + 'w' : parseResult.commentCount}}</text>
+          <text class="stat-num">{{fmt.fmtNum(parseResult.commentCount)}}</text>
           <text class="stat-lbl">💬 评论</text>
         </view>
         <view class="stat-col" wx:if="{{parseResult.collectCount > 0}}">
-          <text class="stat-num">{{parseResult.collectCount >= 10000 ? (parseResult.collectCount / 10000).toFixed(1) + 'w' : parseResult.collectCount}}</text>
+          <text class="stat-num">{{fmt.fmtNum(parseResult.collectCount)}}</text>
           <text class="stat-lbl">⭐ 收藏</text>
         </view>
         <view class="stat-col" wx:if="{{parseResult.shareCount > 0}}">
-          <text class="stat-num">{{parseResult.shareCount >= 10000 ? (parseResult.shareCount / 10000).toFixed(1) + 'w' : parseResult.shareCount}}</text>
+          <text class="stat-num">{{fmt.fmtNum(parseResult.shareCount)}}</text>
           <text class="stat-lbl">🔗 分享</text>
         </view>
       </view>
@@ -223,7 +249,7 @@
       <view class="info-block">
         <view class="kv-row" wx:if="{{parseResult.duration > 0}}">
           <text class="kv-key">⏱️ 时长</text>
-          <text class="kv-val">{{formatDuration(parseResult.duration)}}</text>
+          <text class="kv-val">{{fmt.fmtDur(parseResult.duration)}}</text>
         </view>
         <view class="kv-row" wx:if="{{parseResult.createTime}}">
           <text class="kv-key">📅 发布</text>
