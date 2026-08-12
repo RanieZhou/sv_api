@@ -37,11 +37,30 @@
       <el-divider />
       
       <el-form :model="formState" label-position="top">
+
+        <!-- 只读：接口请求地址 -->
+        <el-form-item label="解析接口地址（只读，不可更改）">
+          <div class="readonly-url-wrap">
+            <el-input
+              :value="apiBaseUrl"
+              readonly
+              class="readonly-url-input"
+            />
+            <el-button plain @click="copyApiUrl">复制地址</el-button>
+          </div>
+          <div class="input-tip">
+            <p>• 此地址为小程序调用的解析服务接口，由系统固定配置，不可手动修改</p>
+          </div>
+        </el-form-item>
+
+        <el-divider />
+
+        <!-- API Key 配置 -->
         <el-form-item label="接口密钥 (API Key)">
           <div class="input-with-button">
             <el-input
               v-model="formState.apiKey"
-              placeholder="请输入有效的 API Key (如 sk_test_...)"
+              placeholder="请输入有效的 API Key (如 sk_...)"
               :maxlength="100"
               show-word-limit
               clearable
@@ -61,6 +80,11 @@
               {{ verifyMessage }}
             </p>
             <p v-else>• 需填写有效的 API Key，系统才能为小程序提供在线解析服务</p>
+            <div class="store-link-row">
+              <a href="https://shortvideo.aihubzone.cn/store/" target="_blank" class="store-link">
+                🛒 没有 API Key？点此前往官方授权商城 → 注册登录即可购买开通 ↗
+              </a>
+            </div>
           </div>
         </el-form-item>
         
@@ -76,8 +100,19 @@
 
 <script setup lang="ts">
 import { reactive, ref, onMounted } from 'vue'
-import { ElMessage, ElCard, ElDivider, ElForm, ElFormItem, ElInput, ElButton, ElTag } from 'element-plus'
+import { ElMessage, ElCard, ElDivider, ElForm, ElFormItem, ElInput, ElButton, ElTag, ElIcon } from 'element-plus'
+import { Link } from '@element-plus/icons-vue'
 import { systemAPI } from '../utils/api'
+
+// 固定只读接口地址
+const apiBaseUrl = 'https://shortvideo.aihubzone.cn/api/parse'
+
+// 复制接口地址
+const copyApiUrl = () => {
+  navigator.clipboard.writeText(apiBaseUrl).then(() => {
+    ElMessage.success('接口地址已复制！')
+  })
+}
 
 // 使用统计数据
 const usageStats = reactive({
@@ -279,5 +314,42 @@ onMounted(() => {
 
 .el-divider {
   margin: 24px 0;
+}
+
+.readonly-url-wrap {
+  display: flex;
+  gap: 12px;
+  width: 100%;
+}
+
+.readonly-url-input {
+  flex: 1;
+}
+
+:deep(.readonly-url-input .el-input__inner) {
+  cursor: default;
+  color: #606266;
+  background-color: #f5f7fa;
+}
+
+.store-link-row {
+  margin-top: 10px;
+}
+
+.store-link {
+  display: inline-block;
+  color: #409EFF;
+  font-weight: 600;
+  font-size: 13px;
+  text-decoration: none;
+  padding: 6px 12px;
+  border: 1px solid #409EFF;
+  border-radius: 6px;
+  transition: all 0.2s;
+}
+
+.store-link:hover {
+  background-color: #409EFF;
+  color: #fff;
 }
 </style>

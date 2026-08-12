@@ -45,7 +45,7 @@ app.listen(config.port, () => {
   console.log(`=======================================================`);
   console.log(`🚀 SV-API Node.js 服务已在端口 ${config.port} 成功启动！`);
   console.log(`🌐 对外解析接口:  http://localhost:${config.port}/api/parse?url=xxx&api_key=xxx`);
-  console.log(`💻 后台管理系统:  http://localhost:${config.port}/admin/`);
+  console.log(`💻 Key管理后台:    http://localhost:${config.port}/keyadmin/`);
   console.log(`🧪 在线测试页面:  http://localhost:${config.port}/test.html`);
   console.log(`=======================================================`);
 });
