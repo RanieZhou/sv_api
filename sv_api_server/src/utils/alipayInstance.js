@@ -101,6 +101,7 @@ export async function getAlipayInstance() {
     appId: cfg.appId.trim(),
     privateKey: formatPrivateKey(cfg.privateKey),
     alipayPublicKey: formatPublicKey(cfg.alipayPublicKey),
+    keyType: 'PKCS8',
     gateway: isSandbox
       ? 'https://openapi-sandbox.dl.alipaydev.com/gateway.do'
       : 'https://openapi.alipay.com/gateway.do',
