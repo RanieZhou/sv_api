@@ -20,20 +20,46 @@ async function loadAlipayConfig() {
   }
 }
 
+import crypto from 'crypto';
+
 function formatPrivateKey(key = '') {
   let str = (key || '').trim();
   if (!str) return '';
-  if (str.includes('BEGIN PRIVATE KEY') || str.includes('BEGIN RSA PRIVATE KEY')) {
+
+  try {
     const raw = str.replace(/-----BEGIN (RSA )?PRIVATE KEY-----/g, '')
                    .replace(/-----END (RSA )?PRIVATE KEY-----/g, '')
                    .replace(/\s+/g, '');
-    return `-----BEGIN PRIVATE KEY-----\n${raw.match(/.{1,64}/g).join('\n')}\n-----END PRIVATE KEY-----`;
+    const buf = Buffer.from(raw, 'base64');
+
+    // 优先按 PKCS8 解析 DER，失败则按 PKCS1 解析 DER
+    try {
+      const k = crypto.createPrivateKey({ key: buf, format: 'der', type: 'pkcs8' });
+      return k.export({ format: 'pem', type: 'pkcs8' });
+    } catch (e1) {
+      const k = crypto.createPrivateKey({ key: buf, format: 'der', type: 'pkcs1' });
+      return k.export({ format: 'pem', type: 'pkcs8' });
+    }
+  } catch (err) {
+    // 若解析遇到异常，按规则输出规范化 PEM
+    if (str.includes('BEGIN RSA PRIVATE KEY')) {
+      const raw = str.replace(/-----BEGIN RSA PRIVATE KEY-----/g, '')
+                     .replace(/-----END RSA PRIVATE KEY-----/g, '')
+                     .replace(/\s+/g, '');
+      return `-----BEGIN RSA PRIVATE KEY-----\n${raw.match(/.{1,64}/g).join('\n')}\n-----END RSA PRIVATE KEY-----`;
+    }
+    if (str.includes('BEGIN PRIVATE KEY')) {
+      const raw = str.replace(/-----BEGIN PRIVATE KEY-----/g, '')
+                     .replace(/-----END PRIVATE KEY-----/g, '')
+                     .replace(/\s+/g, '');
+      return `-----BEGIN PRIVATE KEY-----\n${raw.match(/.{1,64}/g).join('\n')}\n-----END PRIVATE KEY-----`;
+    }
+    if (!str.includes('-----')) {
+      const raw = str.replace(/\s+/g, '');
+      return `-----BEGIN PRIVATE KEY-----\n${raw.match(/.{1,64}/g).join('\n')}\n-----END PRIVATE KEY-----`;
+    }
+    return str;
   }
-  if (!str.includes('-----')) {
-    const raw = str.replace(/\s+/g, '');
-    return `-----BEGIN PRIVATE KEY-----\n${raw.match(/.{1,64}/g).join('\n')}\n-----END PRIVATE KEY-----`;
-  }
-  return str;
 }
 
 function formatPublicKey(key = '') {
