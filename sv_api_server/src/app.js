@@ -11,6 +11,7 @@ import bannersRoutes from './routes/banners.js';
 import systemRoutes from './routes/system.js';
 import uploadRoutes from './routes/upload.js';
 import storeRoutes from './routes/store.js';
+import alipayRoutes from './routes/alipay.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -34,6 +35,7 @@ app.use('/api', systemRoutes);
 app.use('/api', uploadRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/store', storeRoutes);
+app.use('/api/alipay', alipayRoutes);
 
 // 4. 健康检查
 app.get('/health', (req, res) => {

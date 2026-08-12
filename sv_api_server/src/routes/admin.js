@@ -411,4 +411,67 @@ router.get('/store-users', adminAuth, async (req, res) => {
   }
 });
 
+// 支付宝配置：读取（私钥脱敏）
+router.get('/alipay-config', adminAuth, async (req, res) => {
+  try {
+    const row = await queryOne("SELECT config_value FROM system_config WHERE config_key = 'alipay_config'", []);
+    if (!row) {
+      return res.json({ code: 200, msg: 'ok', data: null });
+    }
+    const cfg = JSON.parse(row.config_value);
+    // 脱敏私钥
+    const masked = {
+      ...cfg,
+      privateKey: cfg.privateKey ? '******（已配置，保存时重新填写才会更新）' : '',
+      alipayPublicKey: cfg.alipayPublicKey ? '******（已配置）' : '',
+    };
+    return res.json({ code: 200, msg: 'ok', data: masked, configured: true });
+  } catch (err) {
+    return res.status(500).json({ code: 500, msg: '读取配置失败' });
+  }
+});
+
+// 支付宝配置：保存
+router.post('/alipay-config', adminAuth, async (req, res) => {
+  try {
+    const { appId, privateKey, alipayPublicKey, sandbox } = req.body;
+    if (!appId || !privateKey || !alipayPublicKey) {
+      return res.status(400).json({ code: 400, msg: 'appId、privateKey、alipayPublicKey 均为必填项' });
+    }
+
+    // 如果私钥是脱敏字符串，则读取旧配置中的真实值
+    let finalPrivateKey = privateKey;
+    let finalAlipayPublicKey = alipayPublicKey;
+    if (privateKey.startsWith('******')) {
+      const oldRow = await queryOne("SELECT config_value FROM system_config WHERE config_key = 'alipay_config'", []);
+      if (oldRow) {
+        const oldCfg = JSON.parse(oldRow.config_value);
+        finalPrivateKey = oldCfg.privateKey || privateKey;
+      }
+    }
+    if (alipayPublicKey.startsWith('******')) {
+      const oldRow = await queryOne("SELECT config_value FROM system_config WHERE config_key = 'alipay_config'", []);
+      if (oldRow) {
+        const oldCfg = JSON.parse(oldRow.config_value);
+        finalAlipayPublicKey = oldCfg.alipayPublicKey || alipayPublicKey;
+      }
+    }
+
+    const cfgJson = JSON.stringify({ appId, privateKey: finalPrivateKey, alipayPublicKey: finalAlipayPublicKey, sandbox: !!sandbox });
+    await execute(
+      "INSERT INTO system_config (config_key, config_value) VALUES ('alipay_config', ?) ON CONFLICT(config_key) DO UPDATE SET config_value = excluded.config_value, updated_at = DATETIME('now', 'localtime')",
+      [cfgJson]
+    );
+
+    // 清除 SDK 实例缓存，使新配置立即生效
+    const { clearAlipayCache } = await import('../utils/alipayInstance.js');
+    clearAlipayCache();
+
+    return res.json({ code: 200, msg: '支付宝配置已保存并生效' });
+  } catch (err) {
+    console.error('保存支付宝配置失败:', err);
+    return res.status(500).json({ code: 500, msg: '保存失败: ' + err.message });
+  }
+});
+
 export default router;

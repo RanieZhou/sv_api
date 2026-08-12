@@ -154,8 +154,8 @@ router.get('/profile', storeAuth, async (req, res) => {
   }
 });
 
-// 5. 在线购买套餐并发卡生成 Key
-router.post('/buy', storeAuth, async (req, res) => {
+// 5. 创建支付宝扫码支付订单（返回二维码 base64）
+router.post('/create-alipay-order', storeAuth, async (req, res) => {
   try {
     const { package_id } = req.body;
     const pkg = PACKAGES.find(p => p.id === package_id);
@@ -163,49 +163,88 @@ router.post('/buy', storeAuth, async (req, res) => {
       return res.status(400).json({ code: 400, success: false, message: '无效的套餐类型' });
     }
 
-    // 生成随机订单号
+    // 获取支付宝实例（未配置则返回错误）
+    const { getAlipayInstance } = await import('../utils/alipayInstance.js');
+    const alipaySdk = await getAlipayInstance();
+    if (!alipaySdk) {
+      return res.status(500).json({ code: 500, success: false, message: '支付宝支付尚未配置，请联系管理员' });
+    }
+
+    // 生成订单号
     const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, '');
     const randomHex = crypto.randomBytes(4).toString('hex').toUpperCase();
     const orderNo = `ORD${dateStr}${randomHex}`;
 
-    // 生成随机 API Key (sk_xxx)
-    const apiKey = 'sk_' + crypto.randomBytes(20).toString('hex');
-
-    // 计算到期时间 (30 天后)
-    const d = new Date();
-    d.setDate(d.getDate() + pkg.expireDays);
-    const expireTimeISO = d.toISOString().slice(0, 19).replace('T', ' ');
-
-    // 1) 写入 api_keys 表
+    // 写入 orders 表（pay_status=0 待支付，api_key 留空等回调后填充）
     await execute(
-      `INSERT INTO api_keys (api_key, user_name, status, total_quota, used_quota, qps_limit, expire_time, note)
-       VALUES (?, ?, 1, ?, 0, 10, ?, ?)`,
-      [apiKey, req.user.username, pkg.quota, expireTimeISO, `[在线购买] ${pkg.name} (${pkg.price}元)`]
+      `INSERT INTO orders (order_no, user_id, user_name, package_id, package_name, amount, quota, expire_days, api_key, status, pay_status)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, '', 1, 0)`,
+      [orderNo, req.user.id, req.user.username, pkg.id, pkg.name, pkg.price, pkg.quota, pkg.expireDays]
     );
 
-    // 2) 写入 orders 订单表
-    await execute(
-      `INSERT INTO orders (order_no, user_id, user_name, package_id, package_name, amount, quota, expire_days, api_key, status)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1)`,
-      [orderNo, req.user.id, req.user.username, pkg.id, pkg.name, pkg.price, pkg.quota, pkg.expireDays, apiKey]
-    );
+    // 调用支付宝 alipay.trade.precreate 生成二维码
+    const result = await alipaySdk.exec('alipay.trade.precreate', {
+      bizContent: {
+        out_trade_no: orderNo,
+        total_amount: pkg.price.toFixed(2),
+        subject: `SV-API ${pkg.name}`,
+        body: `短视频解析API授权 - ${pkg.name} (${pkg.quotaLabel})`,
+        timeout_express: '10m',
+      },
+    });
+
+    const qrCode = result?.alipayTradePrecreateResponse?.qrCode || result?.qr_code;
+    if (!qrCode) {
+      console.error('[Store] 支付宝 precreate 响应:', JSON.stringify(result));
+      return res.status(500).json({ code: 500, success: false, message: '支付宝生成二维码失败，请检查配置' });
+    }
+
+    // 使用 qrcode 库将二维码链接转为 base64 DataURL
+    const QRCode = (await import('qrcode')).default;
+    const qrBase64 = await QRCode.toDataURL(qrCode, { width: 240, margin: 1 });
 
     return res.json({
       code: 200,
       success: true,
-      message: '购买成功，已为您自动生成 API Key！',
+      message: '订单创建成功',
+      data: { orderNo, qrBase64, amount: pkg.price, packageName: pkg.name }
+    });
+
+  } catch (err) {
+    console.error('创建支付宝订单失败:', err);
+    return res.status(500).json({ code: 500, success: false, message: '创建订单失败: ' + err.message });
+  }
+});
+
+// 6. 轮询订单支付状态
+router.get('/check-order', storeAuth, async (req, res) => {
+  try {
+    const { order_no } = req.query;
+    if (!order_no) {
+      return res.status(400).json({ code: 400, success: false, message: '缺少 order_no 参数' });
+    }
+
+    const order = await queryOne(
+      'SELECT order_no, pay_status, api_key, package_name, amount FROM orders WHERE order_no = ? AND user_id = ?',
+      [order_no, req.user.id]
+    );
+
+    if (!order) {
+      return res.status(404).json({ code: 404, success: false, message: '订单不存在' });
+    }
+
+    return res.json({
+      code: 200,
+      success: true,
       data: {
-        orderNo,
-        packageName: pkg.name,
-        amount: pkg.price,
-        quota: pkg.quota === -1 ? '不限次数' : `${pkg.quota} 次`,
-        apiKey,
-        expireTime: d.toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai', hour12: false })
+        paid: order.pay_status === 1,
+        apiKey: order.pay_status === 1 ? order.api_key : null,
+        packageName: order.package_name,
+        amount: order.amount
       }
     });
   } catch (err) {
-    console.error('购买发卡失败:', err);
-    return res.status(500).json({ code: 500, success: false, message: '购买失败: ' + err.message });
+    return res.status(500).json({ code: 500, success: false, message: '查询失败' });
   }
 });
 

@@ -111,20 +111,36 @@
     </div>
   </div>
 
-  <!-- 在线购买/发卡 模态框 -->
+  <!-- 在线购买/发卡 模态框 - 支付宝扫码支付 -->
   <div class="modal-mask" id="payModal">
     <div class="modal-box" style="text-align: center;">
       <button class="modal-close" onclick="closePayModal()">✕</button>
       <div class="modal-title" id="payTitle">开通套餐</div>
       <div style="font-size: 1.8rem; font-weight: 800; color: #38bdf8; margin: 0.5rem 0;" id="payAmount">￥19.9</div>
-      
-      <div class="qr-box">
-        <div style="font-size: 3rem; margin-bottom: 0.5rem;">📱</div>
-        <div style="font-weight: 600; color: #1e293b;">微信 / 支付宝 扫码支付</div>
-        <div class="qr-tip">自动检测支付状态 · 支付成功秒级发卡</div>
+
+      <!-- 加载状态 -->
+      <div id="payLoading" style="padding: 2rem 0;">
+        <div style="font-size: 2rem; margin-bottom: 0.5rem;">⏳</div>
+        <div style="color: #94a3b8;">正在生成支付宝二维码...</div>
       </div>
 
-      <button class="btn-buy" style="background: linear-gradient(135deg, #10b981, #059669);" onclick="executeBuy()">💳 模拟调起支付成功（自动发卡）</button>
+      <!-- 二维码展示 -->
+      <div id="qrSection" style="display: none;">
+        <div class="qr-box">
+          <img id="alipayQrImg" src="" alt="支付宝二维码" class="qr-img" style="width: 180px; height: 180px; border-radius: 8px;" />
+          <div style="font-weight: 600; color: #1e293b; margin-top: 0.5rem;">支付宝 扫码支付</div>
+          <div class="qr-tip" id="qrCountdown">二维码有效期：10:00</div>
+        </div>
+        <div style="color: #94a3b8; font-size: 0.85rem; margin-top: 0.5rem;">支付成功后将自动生成 API Key，请勿关闭此窗口</div>
+      </div>
+
+      <!-- 支付成功状态 -->
+      <div id="paySuccess" style="display: none; padding: 1.5rem 0;">
+        <div style="font-size: 2.5rem; margin-bottom: 0.5rem;">🎉</div>
+        <div style="font-weight: 700; font-size: 1.1rem; margin-bottom: 1rem; color: #4ade80;">支付成功！API Key 已自动生成</div>
+        <div style="background: rgba(15,23,42,0.6); padding: 0.75rem; border-radius: 0.5rem; font-family: monospace; color: #38bdf8; font-size: 0.85rem; word-break: break-all;" id="successApiKey"></div>
+        <button class="btn-buy" style="margin-top: 1rem;" onclick="copySuccessKey()">一键复制 API Key</button>
+      </div>
     </div>
   </div>
 
@@ -284,6 +300,11 @@
       }
     }
 
+    let pollTimer = null;
+    let countdownTimer = null;
+    let currentOrderNo = null;
+    let successApiKey = '';
+
     function openPayModal(id, name, price) {
       if (!token || !currentUser) {
         openLoginModal();
@@ -292,38 +313,100 @@
       selectedPackageId = id;
       document.getElementById('payTitle').innerText = '开通 ' + name;
       document.getElementById('payAmount').innerText = '￥' + price;
+
+      // 重置弹窗状态
+      document.getElementById('payLoading').style.display = 'block';
+      document.getElementById('qrSection').style.display = 'none';
+      document.getElementById('paySuccess').style.display = 'none';
+
       document.getElementById('payModal').classList.add('show');
+
+      // 调用后端创建支付宝订单
+      createAlipayOrder(id);
     }
 
     function closePayModal() {
       document.getElementById('payModal').classList.remove('show');
+      if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
+      if (countdownTimer) { clearInterval(countdownTimer); countdownTimer = null; }
+      currentOrderNo = null;
     }
 
-    async function executeBuy() {
-      if (!selectedPackageId) return;
+    async function createAlipayOrder(packageId) {
       try {
-        const res = await fetch('/api/store/buy', {
+        const res = await fetch('/api/store/create-alipay-order', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
             'Authorization': 'Bearer ' + token
           },
-          body: JSON.stringify({ package_id: selectedPackageId })
+          body: JSON.stringify({ package_id: packageId })
         });
         const json = await res.json();
         if (json.success && json.data) {
-          closePayModal();
-          alert('🎉 支付成功！已自动为您发卡：\n\nAPI Key: ' + json.data.apiKey + '\n额度: ' + json.data.quota + '\n到期时间: ' + json.data.expireTime);
-          loadMyKeys();
-          loadMyOrders();
-          scrollToSection('myKeysSection');
+          currentOrderNo = json.data.orderNo;
+
+          // 显示二维码
+          document.getElementById('alipayQrImg').src = json.data.qrBase64;
+          document.getElementById('payLoading').style.display = 'none';
+          document.getElementById('qrSection').style.display = 'block';
+
+          // 倒计时 10 分钟
+          let secs = 600;
+          countdownTimer = setInterval(() => {
+            secs--;
+            const m = String(Math.floor(secs / 60)).padStart(2, '0');
+            const s = String(secs % 60).padStart(2, '0');
+            const el = document.getElementById('qrCountdown');
+            if (el) el.innerText = `二维码有效期：${m}:${s}`;
+            if (secs <= 0) {
+              clearInterval(countdownTimer);
+              if (el) el.innerText = '二维码已过期，请重新发起支付';
+            }
+          }, 1000);
+
+          // 每 2 秒轮询支付状态
+          pollTimer = setInterval(() => checkOrderPaid(), 2000);
+
         } else {
-          alert(json.message || '购买失败');
+          document.getElementById('payLoading').innerHTML = `<div style="color: #f87171; padding: 1rem;">${json.message || '生成二维码失败，请联系客服'}</div>`;
         }
       } catch (e) {
-        alert('购买请求失败');
+        document.getElementById('payLoading').innerHTML = '<div style="color: #f87171; padding: 1rem;">网络请求失败，请稍后重试</div>';
       }
     }
+
+    async function checkOrderPaid() {
+      if (!currentOrderNo) return;
+      try {
+        const res = await fetch(`/api/store/check-order?order_no=${currentOrderNo}`, {
+          headers: { 'Authorization': 'Bearer ' + token }
+        });
+        const json = await res.json();
+        if (json.success && json.data && json.data.paid) {
+          // 支付成功！
+          clearInterval(pollTimer); pollTimer = null;
+          clearInterval(countdownTimer); countdownTimer = null;
+
+          successApiKey = json.data.apiKey;
+          document.getElementById('successApiKey').innerText = successApiKey;
+          document.getElementById('qrSection').style.display = 'none';
+          document.getElementById('paySuccess').style.display = 'block';
+
+          loadMyKeys();
+          loadMyOrders();
+        }
+      } catch (e) {
+        console.error('轮询支付状态失败:', e);
+      }
+    }
+
+    function copySuccessKey() {
+      navigator.clipboard.writeText(successApiKey).then(() => {
+        alert('🎉 API Key 已复制到剪贴板！');
+      });
+    }
+
 
     async function loadMyKeys() {
       try {

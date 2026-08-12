@@ -36,6 +36,11 @@
             <el-icon><Money /></el-icon>
             <span>流量主设置</span>
           </el-menu-item>
+
+          <el-menu-item index="/alipay-settings">
+            <el-icon><CreditCard /></el-icon>
+            <span>支付宝配置</span>
+          </el-menu-item>
         </el-menu>
       </el-aside>
       
@@ -97,7 +102,8 @@ import {
   Link,
   Money,
   Setting,
-  Key
+  Key,
+  CreditCard
 } from '@element-plus/icons-vue'
 
 const router = useRouter()

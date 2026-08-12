@@ -91,6 +91,8 @@ async function initDb() {
         expire_days INTEGER NOT NULL DEFAULT 30,
         api_key TEXT NOT NULL DEFAULT '',
         status INTEGER NOT NULL DEFAULT 1,
+        pay_status INTEGER NOT NULL DEFAULT 0,
+        paid_at DATETIME DEFAULT NULL,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP
       );
 
@@ -193,6 +195,8 @@ async function createMySQLTables(pool) {
         \`expire_days\` INT(11) NOT NULL DEFAULT 30,
         \`api_key\` VARCHAR(64) NOT NULL DEFAULT '',
         \`status\` TINYINT(1) NOT NULL DEFAULT 1,
+        \`pay_status\` TINYINT(1) NOT NULL DEFAULT 0,
+        \`paid_at\` DATETIME DEFAULT NULL,
         \`created_at\` DATETIME DEFAULT CURRENT_TIMESTAMP,
         PRIMARY KEY (\`id\`),
         UNIQUE KEY \`uk_order_no\` (\`order_no\`)

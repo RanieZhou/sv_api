@@ -116,6 +116,10 @@ export const systemAPI = {
   },
   saveAdConfig(data: any) {
     return api.post('/system/ad-config', data)
+  },
+  // 通用管理 API 请求（带 admin token 鉴权）
+  request(method: string, url: string, data?: any) {
+    return api.request({ method, url, data })
   }
 }
 

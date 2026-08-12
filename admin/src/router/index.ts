@@ -41,6 +41,12 @@ const router = createRouter({
           name: 'AdSettings',
           component: () => import('@/views/AdSettings.vue'),
           meta: { title: '流量主设置', requiresAuth: true }
+        },
+        {
+          path: 'alipay-settings',
+          name: 'AlipaySettings',
+          component: () => import('@/views/AlipaySettings.vue'),
+          meta: { title: '支付宝配置', requiresAuth: true }
         }
       ]
     },
