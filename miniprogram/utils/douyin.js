@@ -277,13 +277,37 @@ function parseDouyinVideo(shareContent, apiKey = DEFAULT_API_KEY) {
 }
 
 /**
- * 获取代理视频URL（必须使用！）
- * 将抖音原始直链通过我们自己的服务器中转，绕过防盗链限制。
- * 小程序 <video> 组件无法直接加载带防盗链的抖音 CDN 直链，必须走此代理。
+ * 判断视频 URL 是否需要经过代理中转
+ * 规则：只有抖音 CDN 域名需要代理，其他平台直接使用原始链接
+ */
+function needsProxy(url) {
+  if (!url) return false;
+  try {
+    const host = new URL(url).hostname;
+    // 抖音 CDN 域名（需要代理）
+    const douyinDomains = [
+      'zjcdn.com',        // 抖音主 CDN
+      'douyinvod.com',    // 抖音视频 CDN
+      'iesdouyin.com',    // 抖音分享域
+      'douyinstatic.com', // 抖音静态资源
+    ];
+    return douyinDomains.some(d => host.includes(d));
+  } catch (e) {
+    return false;
+  }
+}
+
+/**
+ * 获取用于小程序播放的视频 URL
+ * 抖音需要代理（有防盗链），其他平台直接使用原始链接
  */
 function getProxyVideoUrl(originalUrl) {
   if (!originalUrl) return '';
-  return `https://shortvideo.aihubzone.cn/api/proxy?url=${encodeURIComponent(originalUrl)}`;
+  if (needsProxy(originalUrl)) {
+    return 'https://shortvideo.aihubzone.cn/api/proxy?url=' + encodeURIComponent(originalUrl);
+  }
+  // 非抖音平台直接返回原始 URL（视频号、B站、快手、小红书均可直接播放）
+  return originalUrl;
 }
 
 /**
