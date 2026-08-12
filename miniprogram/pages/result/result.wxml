@@ -128,7 +128,7 @@ module.exports = { fmtNum: fmtNum, fmtFans: fmtFans, fmtDur: fmtDur };
       </view>
       <!-- 封面备用 -->
       <view class="cover-wrap" wx:elif="{{parseResult.cover}}">
-        <image class="cover-img" src="{{parseResult.cover}}" mode="aspectFill" bindtap="previewCover"></image>
+        <image class="cover-img" src="{{parseResult.proxyCover || parseResult.cover}}" mode="aspectFill" bindtap="previewCover"></image>
         <view class="play-mask"><text class="play-icon">▶️</text></view>
       </view>
 
@@ -193,7 +193,7 @@ module.exports = { fmtNum: fmtNum, fmtFans: fmtFans, fmtDur: fmtDur };
           <swiper-item wx:for="{{parseResult.images}}" wx:key="index">
             <image
               class="gallery-img"
-              src="{{item}}"
+              src="{{parseResult.proxyImages[index] || item}}"
               mode="aspectFit"
               bindtap="previewImages"
               data-index="{{index}}"

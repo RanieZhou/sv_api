@@ -361,6 +361,11 @@ Page({
     try {
       const videoData = await parseDouyinVideo(inputUrl)
 
+      const rawCover = videoData.cover || ''
+      const rawImages = videoData.images || []
+      const proxyCover = getProxyDownloadUrl(rawCover)
+      const proxyImages = rawImages.map(img => getProxyDownloadUrl(img))
+
       // 把解析结果存入 globalData，result 页面从这里取
       const formattedData = {
         success: true,
@@ -371,9 +376,11 @@ Page({
         authorId: videoData.authorId || '',
         followerCount: videoData.followerCount || 0,
         videoUrl: videoData.videoUrl || '',
-        cover: videoData.cover || '',
+        cover: rawCover,
+        proxyCover: proxyCover,
         proxyVideoUrl: videoData.proxyVideoUrl,
-        images: videoData.images || [],
+        images: rawImages,
+        proxyImages: proxyImages,
         duration: videoData.duration || 0,
         size: videoData.size || 0,
         likeCount: videoData.likeCount || 0,
@@ -430,6 +437,7 @@ Page({
         title: formattedData.title || '短视频作品',
         author: formattedData.author || '未知作者',
         cover: formattedData.cover || '',
+        proxyCover: formattedData.proxyCover || getProxyDownloadUrl(formattedData.cover) || '',
         type: formattedData.type || 'video',
         originalUrl: formattedData.originalUrl || '',
         parseResult: formattedData,

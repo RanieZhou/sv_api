@@ -71,6 +71,11 @@ Page({
     try {
       const videoData = await parseDouyinVideo(inputUrl)
 
+      const rawCover = videoData.cover || ''
+      const rawImages = videoData.images || []
+      const proxyCover = getProxyDownloadUrl(rawCover)
+      const proxyImages = rawImages.map(img => getProxyDownloadUrl(img))
+
       const formattedData = {
         success: true,
         type: videoData.type || 'video',
@@ -80,9 +85,11 @@ Page({
         authorId: videoData.authorId || '',
         followerCount: videoData.followerCount || 0,
         videoUrl: videoData.videoUrl || '',
-        cover: videoData.cover || '',
+        cover: rawCover,
+        proxyCover: proxyCover,
         proxyVideoUrl: videoData.proxyVideoUrl,
-        images: videoData.images || [],
+        images: rawImages,
+        proxyImages: proxyImages,
         duration: videoData.duration || 0,
         size: videoData.size || 0,
         likeCount: videoData.likeCount || 0,
@@ -129,80 +136,16 @@ Page({
     }
     const options = parseResult.qualityOptions || []
     if (options.length <= 1) {
-      this._checkAdAndDownload(options[0]?.url || parseResult.videoUrl)
+      this._checkAdAndExecute(() => this.proceedWithDownload(options[0]?.url || parseResult.videoUrl))
       return
     }
     wx.showActionSheet({
       itemList: options.map(o => o.label),
-      success: (res) => this._checkAdAndDownload(options[res.tapIndex].url),
+      success: (res) => {
+        this._checkAdAndExecute(() => this.proceedWithDownload(options[res.tapIndex].url))
+      },
       fail: () => {}
     })
-  },
-
-  _checkAdAndDownload(videoUrl) {
-    if (!app.globalData.adWatched) {
-      wx.showModal({
-        title: '解锁无限使用',
-        content: '观看一次完整广告，解锁24小时无限使用',
-        cancelText: '下次再说',
-        confirmText: '观看广告',
-        success: (res) => {
-          if (res.confirm) {
-            this._pendingDownloadUrl = videoUrl
-            this.showRewardedVideoAd()
-          }
-        }
-      })
-    } else {
-      this.proceedWithDownload(videoUrl)
-    }
-  },
-
-  showRewardedVideoAd() {
-    // 广告组件未初始化时直接下载
-    app.updateAdWatchStatus && app.updateAdWatchStatus(true)
-    this.proceedWithDownload(this._pendingDownloadUrl)
-  },
-
-  async proceedWithDownload(videoUrl) {
-    const { parseResult } = this.data
-    const targetUrl = videoUrl || (parseResult && parseResult.videoUrl)
-    if (!targetUrl) return
-
-    this.setData({ isDownloading: true, downloadProgress: 0, downloadStage: 'downloading', downloadStageText: '正在下载视频...' })
-
-    try {
-      await downloadVideoWithProxy(targetUrl, parseResult.title, this.updateDownloadProgress.bind(this))
-    } catch (error) {
-      console.error('下载失败:', error)
-      this.setData({ isDownloading: false, downloadStage: 'failed', downloadStageText: '下载失败' })
-      wx.showModal({
-        title: '下载失败',
-        content: error.message + '\n\n是否复制代理链接？',
-        confirmText: '复制链接',
-        cancelText: '取消',
-        success: (res) => { if (res.confirm) this.copyVideoUrl() }
-      })
-    }
-  },
-
-  updateDownloadProgress(progress) {
-    const { percent, stage } = progress
-    let stageText = ''
-    switch (stage) {
-      case 'downloading': stageText = `正在下载... ${percent}%`; break
-      case 'saving': stageText = '正在保存到相册...'; break
-      case 'completed':
-        stageText = '下载完成！'
-        setTimeout(() => this.setData({ isDownloading: false }), 1500)
-        wx.showToast({ title: '视频已保存到相册', icon: 'success', duration: 2000 })
-        break
-      case 'failed':
-        stageText = '下载失败'
-        this.setData({ isDownloading: false })
-        break
-    }
-    this.setData({ downloadProgress: Math.max(0, Math.min(100, percent)), downloadStage: stage, downloadStageText: stageText })
   },
 
   // ===== 图集保存 =====
@@ -212,6 +155,59 @@ Page({
       wx.showToast({ title: '没有可保存的图片', icon: 'none' })
       return
     }
+    this._checkAdAndExecute(() => this.proceedWithSaveImages())
+  },
+
+  // 通用广告检测及解锁
+  _checkAdAndExecute(actionCallback) {
+    if (!app.globalData.adWatched) {
+      wx.showModal({
+        title: '解锁无限使用',
+        content: '观看一次完整广告，解锁24小时无限使用',
+        cancelText: '下次再说',
+        confirmText: '观看广告',
+        success: (res) => {
+          if (res.confirm) {
+            this.showRewardedVideoAd(actionCallback)
+          }
+        }
+      })
+    } else {
+      actionCallback()
+    }
+  },
+
+  // 广告播放控制
+  showRewardedVideoAd(callback) {
+    wx.showLoading({ title: '广告加载中...', mask: true })
+    
+    // 如果已有广告组件实例
+    if (this._rewardedVideoAd) {
+      wx.hideLoading()
+      this._adCallback = callback
+      this._rewardedVideoAd.show().catch(() => {
+        this._simulateAdWatch(callback)
+      })
+      return
+    }
+
+    // 开发者体验演示：模拟播放广告 2 秒后解锁
+    this._simulateAdWatch(callback)
+  },
+
+  _simulateAdWatch(callback) {
+    setTimeout(() => {
+      wx.hideLoading()
+      if (app.updateAdWatchStatus) {
+        app.updateAdWatchStatus(true)
+      }
+      wx.showToast({ title: '已解锁24小时无限使用', icon: 'success', duration: 2000 })
+      if (callback) callback()
+    }, 2000)
+  },
+
+  async proceedWithSaveImages() {
+    const { parseResult } = this.data
     const authRes = await new Promise(resolve => wx.authorize({ scope: 'scope.writePhotosAlbum', success: () => resolve(true), fail: () => resolve(false) }))
     if (!authRes) {
       wx.showModal({

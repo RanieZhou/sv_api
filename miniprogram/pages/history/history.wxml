@@ -13,7 +13,7 @@
   <!-- 历史记录列表 -->
   <view class="history-list" wx:if="{{historyList.length > 0}}">
     <view class="history-card" wx:for="{{historyList}}" wx:key="id" bindtap="onItemTap" data-index="{{index}}">
-      <image class="cover-image" src="{{item.cover || '/assets/default_cover.png'}}" mode="aspectFill"></image>
+      <image class="cover-image" src="{{item.proxyCover || item.cover || '/assets/default_cover.png'}}" mode="aspectFill"></image>
       <view class="card-info">
         <view class="card-title-row">
           <text class="badge {{item.type === 'images' ? 'badge-image' : 'badge-video'}}">
