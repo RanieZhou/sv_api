@@ -3,7 +3,7 @@
  * 从 system_config 表中读取配置并初始化 AlipaySdk 实例
  * 每次调用 getAlipayInstance() 都会读取最新配置，确保管理后台更新配置后即时生效
  */
-import AlipaySdk from 'alipay-sdk';
+import { AlipaySdk } from 'alipay-sdk';
 import { queryOne } from '../db.js';
 
 let cachedConfig = null;
