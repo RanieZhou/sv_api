@@ -803,7 +803,12 @@
 
         function formatDate(dateStr) {
           if (!dateStr) return '-';
-          const d = new Date(dateStr);
+          let s = typeof dateStr === 'string' ? dateStr.trim() : String(dateStr);
+          if (/^\d{4}-\d{2}-\d{2}\s\d{2}:\d{2}:\d{2}$/.test(s)) {
+            s = s.replace(' ', 'T') + 'Z';
+          }
+          const d = new Date(s);
+          if (isNaN(d.getTime())) return String(dateStr);
           return d.toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai', hour12: false });
         }
 

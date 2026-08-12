@@ -122,9 +122,17 @@ router.get('/apiKey/verify', async (req, res) => {
       ? '不限次数'
       : `${Math.max(0, row.total_quota - row.used_quota)} 次`;
 
-    const expiryDate = row.expire_time
-      ? new Date(row.expire_time).toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai', hour12: false })
-      : '永不过期';
+    let expiryDate = '永不过期';
+    if (row.expire_time) {
+      let s = typeof row.expire_time === 'string' ? row.expire_time.trim() : (row.expire_time.toISOString ? row.expire_time.toISOString() : String(row.expire_time));
+      if (/^\d{4}-\d{2}-\d{2}\s\d{2}:\d{2}:\d{2}$/.test(s)) {
+        s = s.replace(' ', 'T') + 'Z';
+      }
+      const d = new Date(s);
+      if (!isNaN(d.getTime())) {
+        expiryDate = d.toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai', hour12: false });
+      }
+    }
 
     return res.json({
       code: 200,

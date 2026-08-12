@@ -36,13 +36,6 @@
             <el-icon><Money /></el-icon>
             <span>流量主设置</span>
           </el-menu-item>
-
-          <a href="https://shortvideo.aihubzone.cn/admin/" target="_blank" class="external-menu-link">
-            <el-menu-item index="key-management">
-              <el-icon><Key /></el-icon>
-              <span>API Key 授权管理 ↗</span>
-            </el-menu-item>
-          </a>
         </el-menu>
       </el-aside>
       
