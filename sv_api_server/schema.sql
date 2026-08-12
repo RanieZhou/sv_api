@@ -48,8 +48,8 @@ CREATE TABLE IF NOT EXISTS `api_logs` (
 CREATE TABLE IF NOT EXISTS `banners` (
   `id`         INT(11)      NOT NULL AUTO_INCREMENT          COMMENT '主键ID',
   `title`      VARCHAR(100) NOT NULL DEFAULT ''              COMMENT '标题',
-  `image_url`  TEXT         NOT NULL                         COMMENT '图片URL',
-  `link_url`   TEXT                  DEFAULT ''              COMMENT '跳转链接',
+  `image_url`  VARCHAR(500) NOT NULL DEFAULT ''              COMMENT '图片URL',
+  `link_url`   VARCHAR(500)          DEFAULT ''              COMMENT '跳转链接',
   `sort_order` INT(11)               DEFAULT 0               COMMENT '排序',
   `is_active`  TINYINT(1)            DEFAULT 1               COMMENT '状态：1=启用 0=禁用',
   `created_at` DATETIME              DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
