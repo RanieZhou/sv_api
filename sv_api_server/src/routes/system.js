@@ -54,7 +54,7 @@ router.post('/system/miniprogram-config', async (req, res) => {
 const handleGetApiKeyConfig = async (req, res) => {
   try {
     const data = await getConfig('apikey', {
-      api_key: 'sk_test_00000000000000000000000000000001'
+      api_key: ''
     });
     return res.json({ code: 200, success: true, data });
   } catch (err) {
@@ -72,6 +72,79 @@ const handleSaveApiKeyConfig = async (req, res) => {
     return res.status(500).json({ code: 500, success: false, message: '保存接口配置失败' });
   }
 };
+
+// 校验 API Key 有效性并返回额度与到期时间
+router.get('/apiKey/verify', async (req, res) => {
+  try {
+    const key = (req.query.api_key || req.query.apiKey || '').trim();
+    if (!key) {
+      return res.json({
+        code: 200,
+        success: true,
+        valid: false,
+        message: '未输入 API Key'
+      });
+    }
+
+    const row = await queryOne(
+      'SELECT api_key, user_name, status, total_quota, used_quota, expire_time FROM api_keys WHERE api_key = ?',
+      [key]
+    );
+
+    if (!row) {
+      return res.json({
+        code: 200,
+        success: true,
+        valid: false,
+        message: 'API Key 不存在，请检查输入'
+      });
+    }
+
+    if (row.status !== 1) {
+      return res.json({
+        code: 200,
+        success: true,
+        valid: false,
+        message: 'API Key 已被禁用'
+      });
+    }
+
+    if (row.expire_time && new Date(row.expire_time) < new Date()) {
+      return res.json({
+        code: 200,
+        success: true,
+        valid: false,
+        message: 'API Key 已过期'
+      });
+    }
+
+    const remainingCalls = row.total_quota === -1
+      ? '不限次数'
+      : `${Math.max(0, row.total_quota - row.used_quota)} 次`;
+
+    const expiryDate = row.expire_time
+      ? new Date(row.expire_time).toLocaleString('zh-CN', { hour12: false })
+      : '永不过期';
+
+    return res.json({
+      code: 200,
+      success: true,
+      valid: true,
+      message: '密钥有效',
+      data: {
+        apiKey: row.api_key,
+        userName: row.user_name,
+        remainingCalls,
+        expiryDate,
+        totalQuota: row.total_quota,
+        usedQuota: row.used_quota
+      }
+    });
+  } catch (err) {
+    console.error('校验 API Key 失败:', err);
+    return res.status(500).json({ code: 500, success: false, message: '校验 API Key 失败' });
+  }
+});
 
 router.get('/apiKey/config', handleGetApiKeyConfig);
 router.post('/apiKey/config', handleSaveApiKeyConfig);

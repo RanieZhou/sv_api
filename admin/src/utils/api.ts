@@ -100,12 +100,15 @@ export const systemAPI = {
   saveMiniprogramConfig(data: any) {
     return api.post('/system/miniprogram-config', data)
   },
-  // 接口Key配置
+  // 接口Key配置与校验
   getApiKeyConfig() {
     return api.get('/apiKey/config')
   },
   saveApiKeyConfig(data: any) {
     return api.post('/apiKey/config', data)
+  },
+  verifyApiKeyConfig(apiKey: string) {
+    return api.get('/apiKey/verify', { params: { apiKey } })
   },
   // 流量主广告配置
   getAdConfig() {
