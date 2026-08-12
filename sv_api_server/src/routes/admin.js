@@ -536,6 +536,11 @@ router.post('/email-test', adminAuth, async (req, res) => {
     const { sendVerificationCode } = await import('../utils/mailer.js');
     const result = await sendVerificationCode(targetEmail.trim());
     return res.json({ code: 200, msg: result.message || '测试邮件发送成功！' });
+  } catch (err) {
+    console.error('发送测试邮件失败:', err);
+    return res.status(500).json({ code: 500, msg: '发送失败: ' + err.message });
+  }
+});
 // 10. 商品/套餐管理：获取所有商品套餐（包含已下架）
 router.get('/packages', adminAuth, async (req, res) => {
   try {
