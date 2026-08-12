@@ -10,6 +10,16 @@
       <div class="tip-text">在这里您可以设置小程序的流量主广告ID，复制时请注意删除空格！</div>
       
       <el-form :model="formState" label-position="top">
+        <el-form-item label="流量主广告总开关">
+          <el-switch
+            v-model="formState.adEnabled"
+            active-text="开启广告（保存需看广告解锁）"
+            inactive-text="关闭广告（无任何广告，直接保存）"
+            style="--el-switch-on-color: #13ce66; --el-switch-off-color: #ff4949"
+          />
+        </el-form-item>
+        <el-divider />
+
         <el-form-item label="工具页原生广告ID">
           <el-input
             v-model="formState.toolPageAdId"
@@ -70,6 +80,7 @@ import { ElMessage } from 'element-plus'
 import { systemAPI } from '../utils/api'
 
 const formState = reactive({
+  adEnabled: false,
   toolPageAdId: '',
   interstitialAdId: '',
   rewardedAdId: '',

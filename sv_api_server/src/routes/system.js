@@ -155,6 +155,7 @@ router.post('/system/apikey-config', handleSaveApiKeyConfig);
 router.get('/system/ad-config', async (req, res) => {
   try {
     const data = await getConfig('ad', {
+      adEnabled: false,
       toolPageAdId: '',
       interstitialAdId: '',
       rewardedAdId: '',

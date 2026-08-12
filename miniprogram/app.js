@@ -5,6 +5,8 @@ App({
     openid: null,
     baseUrl: 'https://shuiyin.lingjing235.cn',
     adWatched: false,
+    adEnabled: false,       // 流量主总开关 (默认由后台接口返回)
+    adConfig: null,
     lastAdWatchTime: 0,
     lastParseResult: null   // 页面间传递解析结果
   },
@@ -23,6 +25,28 @@ App({
 
     // 检查广告观看状态
     this.checkAdWatchStatus()
+
+    // 从后台获取流量主设置及总开关
+    this.fetchAdConfig()
+  },
+
+  // 获取后台流量主及广告配置
+  fetchAdConfig() {
+    wx.request({
+      url: 'https://shortvideo.aihubzone.cn/api/system/ad-config',
+      method: 'GET',
+      success: (res) => {
+        if (res.statusCode === 200 && res.data && res.data.data) {
+          const config = res.data.data
+          this.globalData.adEnabled = !!config.adEnabled
+          this.globalData.adConfig = config
+          console.log('获取流量主配置成功, adEnabled =', this.globalData.adEnabled)
+        }
+      },
+      fail: (err) => {
+        console.error('获取流量主配置失败:', err)
+      }
+    })
   },
 
   // 检查广告观看状态

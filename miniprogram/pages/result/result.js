@@ -160,6 +160,15 @@ Page({
 
   // 通用广告检测及解锁
   _checkAdAndExecute(actionCallback) {
+    // 判断全局流量主总开关是否开启
+    const adEnabled = app.globalData.adEnabled === true
+
+    // 若流量主总开关关闭，无需看广告，直接执行保存/下载
+    if (!adEnabled) {
+      actionCallback()
+      return
+    }
+
     if (!app.globalData.adWatched) {
       wx.showModal({
         title: '解锁无限使用',
