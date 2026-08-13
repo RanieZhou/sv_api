@@ -6,7 +6,7 @@
  * 必须通过 /api/proxy?url=<encodeURIComponent(原链)> 服务端中转才能正常加载。
  */
 
-const { getApiUrl } = require('../config/env.js');
+const { getApiUrl, getServerUrl } = require('../config/env.js');
 
 const DEFAULT_API_KEY = 'sk_test_00000000000000000000000000000001';
 
