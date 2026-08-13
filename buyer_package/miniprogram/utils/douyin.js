@@ -414,6 +414,19 @@ function checkAlbumAuth() {
   });
 }
 
+function safeGetServerUrl() {
+  try {
+    if (typeof getServerUrl === 'function') {
+      return getServerUrl();
+    }
+    const env = require('../config/env.js');
+    if (env && typeof env.getServerUrl === 'function') {
+      return env.getServerUrl();
+    }
+  } catch (e) {}
+  return '';
+}
+
 /**
  * 获取符合微信小程序 downloadFile 合法域名的代理下载 URL
  * 解决微信小程序 downloadFile 对 HTTP 协议以及非白名单域名的限制
@@ -421,7 +434,8 @@ function checkAlbumAuth() {
  */
 function getProxyDownloadUrl(originalUrl) {
   if (!originalUrl) return '';
-  if (originalUrl.includes('/api/proxy') || (getServerUrl() && originalUrl.includes(getServerUrl()))) {
+  const sUrl = safeGetServerUrl();
+  if (originalUrl.includes('/api/proxy') || (sUrl && originalUrl.includes(sUrl))) {
     return originalUrl;
   }
   return getApiUrl('/proxy') + '?url=' + encodeURIComponent(originalUrl);
