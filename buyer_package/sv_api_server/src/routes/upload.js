@@ -57,7 +57,7 @@ router.post('/upload', upload.single('file'), (req, res) => {
       return res.status(400).json({ code: 400, success: false, msg: '未选择任何图片文件' });
     }
 
-    const relativeUrl = `/uploads/${req.file.filename}`;
+    const relativeUrl = `/api/uploads/${req.file.filename}`;
 
     return res.json({
       code: 200,

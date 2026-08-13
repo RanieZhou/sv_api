@@ -2,14 +2,14 @@
 const ENV_CONFIG = {
   // 开发环境
   development: {
-    API_BASE_URL: 'https://shortvideo.aihubzone.cn/api',
-    SERVER_URL: 'https://shortvideo.aihubzone.cn'
+    API_BASE_URL: 'https://testsv.aihubzone.cn/api',
+    SERVER_URL: 'https://testsv.aihubzone.cn'
   },
-  
+
   // 生产环境
   production: {
-    API_BASE_URL: 'https://shortvideo.aihubzone.cn/api',
-    SERVER_URL: 'https://shortvideo.aihubzone.cn'
+    API_BASE_URL: 'https://testsv.aihubzone.cn/api',
+    SERVER_URL: 'https://testsv.aihubzone.cn'
   }
 };
 

@@ -25,6 +25,8 @@ app.use(express.urlencoded({ extended: true }));
 
 // 2. 静态目录托管
 app.use(express.static(path.join(__dirname, '../public')));
+app.use('/uploads', express.static(path.join(__dirname, '../public/uploads')));
+app.use('/api/uploads', express.static(path.join(__dirname, '../public/uploads')));
 app.use('/admin', express.static(path.join(__dirname, '../public/admin')));
 app.use('/keyadmin', express.static(path.join(__dirname, '../public/keyadmin')));
 app.use('/store', express.static(path.join(__dirname, '../../store')));
