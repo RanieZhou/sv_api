@@ -1,9 +1,11 @@
 // app.js
+const { getApiUrl, getServerUrl } = require('./config/env.js');
+
 App({
   globalData: {
     userInfo: null,
     openid: null,
-    baseUrl: 'https://shuiyin.lingjing235.cn',
+    baseUrl: getServerUrl(),
     adWatched: false,
     adEnabled: true,       // 默认开启（本地缓存/远程加载后再同步）
     adConfig: null,
@@ -40,7 +42,7 @@ App({
   // 获取后台流量主及广告配置
   fetchAdConfig() {
     wx.request({
-      url: 'https://shortvideo.aihubzone.cn/api/system/ad-config',
+      url: getApiUrl('/system/ad-config'),
       method: 'GET',
       success: (res) => {
         if (res.statusCode === 200 && res.data && res.data.data) {

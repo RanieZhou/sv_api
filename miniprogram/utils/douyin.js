@@ -302,7 +302,7 @@ function parseDouyinVideo(shareContent, apiKey = '') {
         fail: (err) => {
           let errorMessage = '网络请求失败，请检查网络设置';
           if (err.errMsg && err.errMsg.includes('domain')) {
-            errorMessage = '❌ 域名未配置在小程序合法域名列表中！请在微信后台添加 shortvideo.aihubzone.cn';
+            errorMessage = '❌ 域名未配置在小程序合法域名列表中！请在微信后台添加您的服务端域名';
           } else if (err.errMsg) {
             errorMessage = `网络错误：${err.errMsg}`;
           }
@@ -343,7 +343,7 @@ function needsProxy(url) {
 function getProxyVideoUrl(originalUrl) {
   if (!originalUrl) return '';
   if (needsProxy(originalUrl)) {
-    return 'https://shortvideo.aihubzone.cn/api/proxy?url=' + encodeURIComponent(originalUrl);
+    return getApiUrl('/proxy') + '?url=' + encodeURIComponent(originalUrl);
   }
   // 非抖音平台直接返回原始 URL（视频号、B站、快手、小红书均可直接播放）
   return originalUrl;
@@ -421,7 +421,7 @@ function checkAlbumAuth() {
  */
 function getProxyDownloadUrl(originalUrl) {
   if (!originalUrl) return '';
-  if (originalUrl.includes('shortvideo.aihubzone.cn')) {
+  if (originalUrl.includes('/api/proxy') || (getServerUrl() && originalUrl.includes(getServerUrl()))) {
     return originalUrl;
   }
   return getApiUrl('/proxy') + '?url=' + encodeURIComponent(originalUrl);
