@@ -6,7 +6,7 @@
  * 必须通过 /api/proxy?url=<encodeURIComponent(原链)> 服务端中转才能正常加载。
  */
 
-const { getApiUrl, getServerUrl } = require('../config/env.js');
+const { getApiUrl } = require('../config/env.js');
 
 const DEFAULT_API_KEY = 'sk_test_00000000000000000000000000000001';
 
@@ -414,19 +414,6 @@ function checkAlbumAuth() {
   });
 }
 
-function safeGetServerUrl() {
-  try {
-    if (typeof getServerUrl === 'function') {
-      return getServerUrl();
-    }
-    const env = require('../config/env.js');
-    if (env && typeof env.getServerUrl === 'function') {
-      return env.getServerUrl();
-    }
-  } catch (e) {}
-  return '';
-}
-
 /**
  * 获取符合微信小程序 downloadFile 合法域名的代理下载 URL
  * 解决微信小程序 downloadFile 对 HTTP 协议以及非白名单域名的限制
@@ -434,8 +421,7 @@ function safeGetServerUrl() {
  */
 function getProxyDownloadUrl(originalUrl) {
   if (!originalUrl) return '';
-  const sUrl = safeGetServerUrl();
-  if (originalUrl.includes('/api/proxy') || (sUrl && originalUrl.includes(sUrl))) {
+  if (originalUrl.includes('/api/proxy') || originalUrl.includes('/proxy?url=')) {
     return originalUrl;
   }
   return getApiUrl('/proxy') + '?url=' + encodeURIComponent(originalUrl);
