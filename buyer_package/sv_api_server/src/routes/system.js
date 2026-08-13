@@ -96,6 +96,12 @@ router.get('/apiKey/verify', async (req, res) => {
       masterHost = `${parsedUrl.protocol}//${parsedUrl.host}`;
     } catch (e) {}
 
+    // 防止买家将 UPSTREAM_API_URL 错配为买家自己的域名导致请求循环环路
+    const currentReqHost = (req.get('host') || '').toLowerCase();
+    if (currentReqHost && masterHost.toLowerCase().includes(currentReqHost)) {
+      masterHost = 'https://shortvideo.aihubzone.cn';
+    }
+
     const masterVerifyUrl = `${masterHost}/api/apiKey/verify`;
 
     const response = await axios.get(masterVerifyUrl, {

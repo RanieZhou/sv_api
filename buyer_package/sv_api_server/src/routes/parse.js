@@ -71,8 +71,15 @@ async function handleParseRequest(req, res) {
   }
 
   try {
+    // 防环保护：若 UPSTREAM_API_URL 误设为本买家域名，自动纠正为总站域名
+    let targetUpstreamUrl = config.upstreamUrl || 'https://shortvideo.aihubzone.cn/api/parse';
+    const currentReqHost = (req.get('host') || '').toLowerCase();
+    if (currentReqHost && targetUpstreamUrl.toLowerCase().includes(currentReqHost)) {
+      targetUpstreamUrl = 'https://shortvideo.aihubzone.cn/api/parse';
+    }
+
     // 请求总站 API 解析服务 (传递 url 及站长 api_key)
-    const response = await axios.get(config.upstreamUrl, {
+    const response = await axios.get(targetUpstreamUrl, {
       params: { url: targetUrl, api_key: apiKey },
       timeout: config.upstreamUrlTimeout || 15000,
       headers: {
