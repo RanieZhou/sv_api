@@ -1,4 +1,6 @@
 import express from 'express';
+import axios from 'axios';
+import { config } from '../config.js';
 import { queryOne, execute } from '../db.js';
 
 const router = express.Router();
@@ -74,7 +76,7 @@ const handleSaveApiKeyConfig = async (req, res) => {
   }
 };
 
-// 校验 API Key 有效性并返回额度与到期时间
+// 校验 API Key 有效性并返回额度与到期时间 (买家服务端转发给总站网关进行真实校验)
 router.get('/apiKey/verify', async (req, res) => {
   try {
     const key = (req.query.api_key || req.query.apiKey || '').trim();
@@ -87,71 +89,29 @@ router.get('/apiKey/verify', async (req, res) => {
       });
     }
 
-    const row = await queryOne(
-      'SELECT api_key, user_name, status, total_quota, used_quota, expire_time FROM api_keys WHERE api_key = ?',
-      [key]
-    );
+    // 动态构造总站 verify 校验接口地址
+    const masterVerifyUrl = new URL('/api/apiKey/verify', config.upstreamUrl).href;
 
-    if (!row) {
-      return res.json({
-        code: 200,
-        success: true,
-        valid: false,
-        message: 'API Key 不存在，请检查输入'
-      });
-    }
-
-    if (row.status !== 1) {
-      return res.json({
-        code: 200,
-        success: true,
-        valid: false,
-        message: 'API Key 已被禁用'
-      });
-    }
-
-    if (row.expire_time && new Date(row.expire_time) < new Date()) {
-      return res.json({
-        code: 200,
-        success: true,
-        valid: false,
-        message: 'API Key 已过期'
-      });
-    }
-
-    const remainingCalls = row.total_quota === -1
-      ? '不限次数'
-      : `${Math.max(0, row.total_quota - row.used_quota)} 次`;
-
-    let expiryDate = '永不过期';
-    if (row.expire_time) {
-      let s = typeof row.expire_time === 'string' ? row.expire_time.trim() : (row.expire_time.toISOString ? row.expire_time.toISOString() : String(row.expire_time));
-      if (/^\d{4}-\d{2}-\d{2}\s\d{2}:\d{2}:\d{2}$/.test(s)) {
-        s = s.replace(' ', 'T') + 'Z';
-      }
-      const d = new Date(s);
-      if (!isNaN(d.getTime())) {
-        expiryDate = d.toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai', hour12: false });
-      }
-    }
-
-    return res.json({
-      code: 200,
-      success: true,
-      valid: true,
-      message: '密钥有效',
-      data: {
-        apiKey: row.api_key,
-        userName: row.user_name,
-        remainingCalls,
-        expiryDate,
-        totalQuota: row.total_quota,
-        usedQuota: row.used_quota
+    const response = await axios.get(masterVerifyUrl, {
+      params: { apiKey: key, api_key: key },
+      timeout: 10000,
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
       }
     });
+
+    return res.json(response.data);
   } catch (err) {
-    console.error('校验 API Key 失败:', err);
-    return res.status(500).json({ code: 500, success: false, message: '校验 API Key 失败' });
+    console.error('向总站校验 API Key 失败:', err.message);
+    const errData = err.response ? err.response.data : null;
+    if (errData) {
+      return res.json(errData);
+    }
+    return res.status(500).json({
+      code: 500,
+      success: false,
+      message: '无法连接总站网关进行密钥校验: ' + err.message
+    });
   }
 });
 
