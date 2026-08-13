@@ -51,7 +51,7 @@ npm install
 打开 `.env` 文件，配置你的 MySQL 连接和管理员密码：
 
 ```env
-PORT=3000
+PORT=3011
 
 # MySQL 配置
 DB_HOST=localhost
@@ -63,8 +63,8 @@ DB_PASS=你的数据库密码
 # ⚠️ 管理员后台登录密码（用于 /admin/ 登录）
 ADMIN_PASSWORD=admin123456
 
-# 上游免费解析接口
-UPSTREAM_API_URL=https://api.bugpk.com/api/short_videos
+# 上游 API 解析服务 (即总站解析接口)
+UPSTREAM_API_URL=https://shortvideo.aihubzone.cn/api/parse
 ```
 
 ---

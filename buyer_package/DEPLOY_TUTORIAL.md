@@ -20,7 +20,7 @@ buyer_package/
 
 | 组件 | 说明 | 运行端口 | 推荐域名绑定路径 |
 | :--- | :--- | :--- | :--- |
-| **API 服务端 (`sv_api_server`)** | Node.js 核心后端服务 | `3005` (可自由修改) | `https://您的域名.com` |
+| **API 服务端 (`sv_api_server`)** | Node.js 核心后端服务 | `3011` (可自由修改) | `https://您的域名.com` |
 | **小程序管理后台 (`/admin/`)** | Express 自动托管 | 随服务端 | `https://您的域名.com/admin/` |
 
 ---
@@ -32,7 +32,7 @@ buyer_package/
 
 ```env
 # 服务运行端口
-PORT=3005
+PORT=3011
 
 # MySQL 数据库配置 (建议填入您的 MySQL 信息；若未配置 MySQL，服务端会自动使用内置本地 SQLite 零配置运行)
 DB_HOST=localhost
@@ -68,7 +68,7 @@ pm2 startup
 在宝塔面板新建站点 `您的域名.com` 并申请安装 SSL 证书。
 打开站点设置 → 【反向代理】 → 【添加反向代理】：
 - **代理名称**：`sv_api_proxy`
-- **目标 URL**：`http://127.0.0.1:3005`
+- **目标 URL**：`http://127.0.0.1:3011`
 - **发送域名**：`$host`
 
 ---
