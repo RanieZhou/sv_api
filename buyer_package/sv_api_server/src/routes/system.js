@@ -89,8 +89,14 @@ router.get('/apiKey/verify', async (req, res) => {
       });
     }
 
-    // 动态构造总站 verify 校验接口地址
-    const masterVerifyUrl = new URL('/api/apiKey/verify', config.upstreamUrl).href;
+    // 从 config.upstreamUrl 中精准解析总站域名基址，构造 verify 校验地址
+    let masterHost = 'https://shortvideo.aihubzone.cn';
+    try {
+      const parsedUrl = new URL(config.upstreamUrl);
+      masterHost = `${parsedUrl.protocol}//${parsedUrl.host}`;
+    } catch (e) {}
+
+    const masterVerifyUrl = `${masterHost}/api/apiKey/verify`;
 
     const response = await axios.get(masterVerifyUrl, {
       params: { apiKey: key, api_key: key },
