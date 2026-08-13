@@ -22,5 +22,5 @@ export const config = {
   },
   adminPassword: process.env.ADMIN_PASSWORD || 'admin123456',
   adminToken: process.env.ADMIN_TOKEN || 'sv_admin_secret_token_2026',
-  upstreamUrl: process.env.UPSTREAM_API_URL || 'https://api.bugpk.com/api/short_videos',
+  upstreamUrl: process.env.UPSTREAM_API_URL || 'https://shortvideo.aihubzone.cn/api/parse',
 };
