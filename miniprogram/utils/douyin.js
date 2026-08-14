@@ -430,10 +430,24 @@ function getProxyDownloadUrl(originalUrl) {
 function downloadFile(url, onProgress = null) {
   return new Promise((resolve, reject) => {
     const finalUrl = getProxyDownloadUrl(url);
+    // 微信规范：保存视频到相册必须有明确的 .mp4 后缀，否则 iOS/Android 会报错 invalid file type
+    const tempFilePath = `${wx.env.USER_DATA_PATH}/video_${Date.now()}_${Math.random().toString(36).slice(2, 8)}.mp4`;
+
     const downloadTask = wx.downloadFile({
       url: finalUrl,
-      success: resolve,
-      fail: reject
+      filePath: tempFilePath,
+      success: (res) => {
+        if (res.statusCode === 200) {
+          const savedPath = res.filePath || res.tempFilePath || tempFilePath;
+          resolve({ statusCode: 200, tempFilePath: savedPath });
+        } else {
+          reject(new Error(`视频下载失败，HTTP状态码：${res.statusCode}`));
+        }
+      },
+      fail: (err) => {
+        const msg = err && (err.errMsg || err.message) ? (err.errMsg || err.message) : '网络下载失败';
+        reject(new Error(msg));
+      }
     });
 
     if (onProgress) {
@@ -455,7 +469,17 @@ function saveVideoToAlbum(filePath) {
     wx.saveVideoToPhotosAlbum({
       filePath: filePath,
       success: resolve,
-      fail: reject
+      fail: (err) => {
+        console.error('saveVideoToPhotosAlbum 失败:', err);
+        const errMsg = err && (err.errMsg || err.message) ? (err.errMsg || err.message) : '保存到相册失败';
+        if (errMsg.includes('auth deny') || errMsg.includes('authorize')) {
+          reject(new Error('未获得相册写入权限，请在权限设置中开启'));
+        } else if (errMsg.includes('cancel')) {
+          reject(new Error('用户取消了保存'));
+        } else {
+          reject(new Error(errMsg));
+        }
+      }
     });
   });
 }

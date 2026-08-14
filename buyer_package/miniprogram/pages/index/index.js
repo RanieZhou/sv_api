@@ -538,9 +538,10 @@ Page({
     } catch (error) {
       console.error('下载失败:', error)
       this.setData({ isDownloading: false, downloadStage: 'failed', downloadStageText: '下载失败' })
+      const errorMsg = (error && (error.message || error.errMsg)) ? (error.message || error.errMsg) : '视频保存失败，请检查网络或相册权限';
       wx.showModal({
         title: '下载失败',
-        content: error.message + '\n\n是否复制代理视频链接到剪贴板？',
+        content: errorMsg + '\n\n是否复制代理视频链接到剪贴板？',
         confirmText: '复制链接',
         cancelText: '取消',
         success: (modalRes) => { if (modalRes.confirm) this.copyVideoUrl() }

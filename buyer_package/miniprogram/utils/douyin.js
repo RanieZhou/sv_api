@@ -6,7 +6,7 @@
  * 必须通过 /api/proxy?url=<encodeURIComponent(原链)> 服务端中转才能正常加载。
  */
 
-const { getApiUrl } = require('../config/env.js');
+const { getApiUrl, getServerUrl } = require('../config/env.js');
 
 const DEFAULT_API_KEY = 'sk_test_00000000000000000000000000000001';
 
@@ -19,13 +19,13 @@ function extractDouyinUrl(text) {
   if (!text || typeof text !== 'string') {
     return '';
   }
-  
+
   // 匹配文本中的 http:// 或 https:// 链接
   const match = text.match(/https?:\/\/[^\s\u4e00-\u9fa5]+/i);
   if (match && match[0]) {
     return match[0].trim();
   }
-  
+
   return text.trim();
 }
 
@@ -114,15 +114,15 @@ function parseDouyinVideo(shareContent, apiKey = '') {
         reject(new Error('未在分享内容中找到有效的视频链接'));
         return;
       }
-      
+
       const finalApiKey = await getOrFetchApiKey(apiKey);
       console.log('正在提交解析链接:', cleanUrl, 'API Key:', finalApiKey ? finalApiKey.slice(0, 10) + '...' : '未传递');
-      
+
       const reqData = { url: cleanUrl };
       if (finalApiKey) {
         reqData.api_key = finalApiKey;
       }
-      
+
       wx.request({
         url: getApiUrl('/parse'),
         method: 'GET',
@@ -130,7 +130,7 @@ function parseDouyinVideo(shareContent, apiKey = '') {
         timeout: 15000,
         success: (res) => {
           console.log('解析接口返回:', res);
-          
+
           if (res.statusCode === 200 && res.data && (res.data.code === 200 || res.data.code === 0)) {
             const raw = res.data;
             const d = raw.data || raw;
@@ -160,10 +160,10 @@ function parseDouyinVideo(shareContent, apiKey = '') {
             // 抖音: extra.statistics.digg_count / comment_count / collect_count / share_count
             // 快手: extra.statistics.like_count / comment_count / share_count / play_count
             // 其他平台暂无
-            const likeCount   = stats.digg_count  || stats.like_count    || 0;
+            const likeCount = stats.digg_count || stats.like_count || 0;
             const commentCount = stats.comment_count || 0;
             const collectCount = stats.collect_count || 0;
-            const shareCount   = stats.share_count   || 0;
+            const shareCount = stats.share_count || 0;
 
             // ===== 视频 URL（各平台）=====
             // B站: d.url 或 d.videos[0].url
@@ -289,7 +289,7 @@ function parseDouyinVideo(shareContent, apiKey = '') {
               // 清晰度
               qualityOptions,
             };
-            
+
             resolve(formattedData);
           } else {
             if (res.statusCode === 401 || res.data?.code === 401) {
@@ -430,10 +430,24 @@ function getProxyDownloadUrl(originalUrl) {
 function downloadFile(url, onProgress = null) {
   return new Promise((resolve, reject) => {
     const finalUrl = getProxyDownloadUrl(url);
+    // 微信规范：保存视频到相册必须有明确的 .mp4 后缀，否则 iOS/Android 会报错 invalid file type
+    const tempFilePath = `${wx.env.USER_DATA_PATH}/video_${Date.now()}_${Math.random().toString(36).slice(2, 8)}.mp4`;
+
     const downloadTask = wx.downloadFile({
       url: finalUrl,
-      success: resolve,
-      fail: reject
+      filePath: tempFilePath,
+      success: (res) => {
+        if (res.statusCode === 200) {
+          const savedPath = res.filePath || res.tempFilePath || tempFilePath;
+          resolve({ statusCode: 200, tempFilePath: savedPath });
+        } else {
+          reject(new Error(`视频下载失败，HTTP状态码：${res.statusCode}`));
+        }
+      },
+      fail: (err) => {
+        const msg = err && (err.errMsg || err.message) ? (err.errMsg || err.message) : '网络下载失败';
+        reject(new Error(msg));
+      }
     });
 
     if (onProgress) {
@@ -455,7 +469,17 @@ function saveVideoToAlbum(filePath) {
     wx.saveVideoToPhotosAlbum({
       filePath: filePath,
       success: resolve,
-      fail: reject
+      fail: (err) => {
+        console.error('saveVideoToPhotosAlbum 失败:', err);
+        const errMsg = err && (err.errMsg || err.message) ? (err.errMsg || err.message) : '保存到相册失败';
+        if (errMsg.includes('auth deny') || errMsg.includes('authorize')) {
+          reject(new Error('未获得相册写入权限，请在权限设置中开启'));
+        } else if (errMsg.includes('cancel')) {
+          reject(new Error('用户取消了保存'));
+        } else {
+          reject(new Error(errMsg));
+        }
+      }
     });
   });
 }
