@@ -113,8 +113,19 @@ export function detectMp4VideoCodec(input) {
   if (buffer.length < 16) return null;
 
   const ftypCodec = readFtypCodec(buffer);
-  const entries = findStsdBoxes(buffer, 0, buffer.length)
+  let entries = findStsdBoxes(buffer, 0, buffer.length)
     .flatMap((box) => readSampleEntries(buffer, box));
+
+  // 若从头解析未找到 stsd，尝试全局搜索 moov box 位置（应对 tail 探测分片）
+  if (entries.length === 0) {
+    const moovIdx = buffer.indexOf(Buffer.from('moov'));
+    if (moovIdx >= 4) {
+      const moovStart = moovIdx - 4;
+      entries = findStsdBoxes(buffer, moovStart, buffer.length)
+        .flatMap((box) => readSampleEntries(buffer, box));
+    }
+  }
+
   const videoEntry = entries.find((entry) => (
     VIDEO_SAMPLE_ENTRIES.has(entry) && !AUDIO_SAMPLE_ENTRIES.has(entry)
   ));
@@ -128,24 +139,47 @@ export function isPhotosCompatibleVideoCodec(codec) {
 export async function probeVideoCodec(url, options = {}) {
   if (!url) return null;
 
+  const requestHeaders = {
+    'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 16_6 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.6 Mobile/15E148 Safari/604.1',
+    Referer: 'https://www.douyin.com/',
+  };
+
   try {
-    const response = await axios.get(url, {
+    // 1. 先探头部 512KB (涵盖 fast-start 视频)
+    const headRes = await axios.get(url, {
       responseType: 'arraybuffer',
-      timeout: options.timeout || 15000,
+      timeout: options.timeout || 10000,
       maxContentLength: MAX_RESPONSE_BYTES,
       maxBodyLength: MAX_RESPONSE_BYTES,
       headers: {
+        ...requestHeaders,
         Range: 'bytes=0-' + (PROBE_BYTES - 1),
-        'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 16_6 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.6 Mobile/15E148 Safari/604.1',
-        Referer: 'https://www.douyin.com/',
       },
       validateStatus: (status) => status === 200 || status === 206,
     });
 
-    const buffer = Buffer.from(response.data).subarray(0, PROBE_BYTES);
-    const codec = detectMp4VideoCodec(buffer);
-    if (!codec) return null;
-    return { codec };
+    const headBuffer = Buffer.from(headRes.data);
+    let codec = detectMp4VideoCodec(headBuffer);
+    if (codec) return { codec };
+
+    // 2. 若头部未探到 moov，探尾部 256KB (涵盖 moov 在文件末尾的视频)
+    const tailRes = await axios.get(url, {
+      responseType: 'arraybuffer',
+      timeout: options.timeout || 10000,
+      maxContentLength: MAX_RESPONSE_BYTES,
+      maxBodyLength: MAX_RESPONSE_BYTES,
+      headers: {
+        ...requestHeaders,
+        Range: 'bytes=-262144',
+      },
+      validateStatus: (status) => status === 200 || status === 206,
+    });
+
+    const tailBuffer = Buffer.from(tailRes.data);
+    codec = detectMp4VideoCodec(tailBuffer);
+    if (codec) return { codec };
+
+    return null;
   } catch (error) {
     return null;
   }
