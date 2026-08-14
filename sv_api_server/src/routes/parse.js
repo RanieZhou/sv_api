@@ -4,8 +4,135 @@ import { config } from '../config.js';
 import { extractUrl } from '../utils/urlExtractor.js';
 import { authenticateKey, logApiCall } from '../middlewares/auth.js';
 import { checkMsgSecurity } from '../utils/secCheck.js';
+import { isPhotosCompatibleVideoCodec, probeVideoCodec } from '../utils/videoCodec.js';
 
 const router = express.Router();
+
+const DOUYIN_HOST_PATTERN = /(^|\/\/)([^/]+\.)?(douyin\.com|iesdouyin\.com)(\/|$)/i;
+
+function isDouyinUrl(url) {
+  return DOUYIN_HOST_PATTERN.test(String(url || ''));
+}
+
+async function fetchUpstream(url, targetUrl) {
+  const response = await axios.get(url, {
+    params: { url: targetUrl },
+    timeout: config.upstreamUrlTimeout || 15000,
+    headers: {
+      'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 16_6 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.6 Mobile/15E148 Safari/604.1',
+    },
+  });
+  return response.data;
+}
+
+async function inspectVideoBackups(responseData) {
+  const data = responseData && responseData.data;
+  if (!data || String(data.type || '').toLowerCase() !== 'video') {
+    return { responseData, probed: [], compatible: [], codecs: [] };
+  }
+
+  const backups = Array.isArray(data.video_backup) ? data.video_backup : [];
+  const candidates = [
+    ...(data.url ? [{
+      url: data.url,
+      quality: data.quality || '原画',
+      label: data.quality || '原画',
+      format: 'mp4',
+      bit_rate: data.bit_rate || 0,
+    }] : []),
+    ...backups.filter((item) => item && item.url),
+  ].filter((item, index, list) => (
+    list.findIndex((candidate) => candidate.url === item.url) === index
+  ));
+  if (candidates.length === 0) {
+    return { responseData, probed: [], compatible: [], codecs: [] };
+  }
+
+  const inspectCandidate = async (item) => {
+    const probe = await probeVideoCodec(item.url);
+    if (!probe) return item;
+    return {
+      ...item,
+      codec: probe.codec,
+      actual_codec: probe.codec,
+    };
+  };
+
+  const first = await inspectCandidate(candidates[0]);
+  if (first.actual_codec && isPhotosCompatibleVideoCodec(first.actual_codec)) {
+    return {
+      responseData,
+      inspected: [first],
+      probed: [first],
+      compatible: [first],
+      codecs: [first.actual_codec],
+    };
+  }
+
+  const inspected = [first, ...(await Promise.all(candidates.slice(1).map(inspectCandidate)))];
+
+  const probed = inspected.filter((item) => item.actual_codec);
+  const compatible = probed.filter((item) => isPhotosCompatibleVideoCodec(item.actual_codec));
+  const codecs = [...new Set(probed.map((item) => item.actual_codec))];
+  return { responseData, inspected, probed, compatible, codecs };
+}
+
+function useCompatibleVideos(responseData, compatible) {
+  const data = responseData.data || {};
+  const primary = compatible[0];
+  return {
+    ...responseData,
+    data: {
+      ...data,
+      url: primary?.url || data.url,
+      video_codec: primary?.actual_codec || primary?.codec || data.video_codec,
+      video_backup: compatible,
+    },
+  };
+}
+
+function unsupportedVideoResponse(codecs) {
+  const codecText = codecs.length > 0 ? codecs.join(', ') : '未知';
+  return {
+    code: 422,
+    msg: '该视频当前没有兼容手机相册的 H.264/HEVC 视频流',
+    error_code: 'UNSUPPORTED_VIDEO_CODEC',
+    detail: '检测到视频编码：' + codecText,
+    data: null,
+  };
+}
+
+async function normalizeDouyinVideo(responseData, targetUrl) {
+  if (!isDouyinUrl(targetUrl)) return { responseData };
+
+  const primaryReport = await inspectVideoBackups(responseData);
+  if (primaryReport.compatible.length > 0) {
+    return { responseData: useCompatibleVideos(responseData, primaryReport.compatible) };
+  }
+
+  // 上游 short_videos 接口的 codec 标签可能写成 h264，但文件内实际是 ByteVC2。
+  // 这种流能正常下载，却会在 wx.saveVideoToPhotosAlbum 时被 iOS 判定为 invalid video。
+  if (primaryReport.probed.length === 0) return { responseData };
+
+  try {
+    const fallbackData = await fetchUpstream(config.douyinUpstreamUrl, targetUrl);
+    const fallbackReport = await inspectVideoBackups(fallbackData);
+    if (fallbackReport.compatible.length > 0) {
+      return { responseData: useCompatibleVideos(fallbackData, fallbackReport.compatible) };
+    }
+
+    const fallbackCodecs = fallbackReport.codecs;
+    return {
+      unsupported: true,
+      body: unsupportedVideoResponse([...new Set([...primaryReport.codecs, ...fallbackCodecs])]),
+    };
+  } catch (error) {
+    return {
+      unsupported: true,
+      body: unsupportedVideoResponse(primaryReport.codecs),
+    };
+  }
+}
 
 // 微信内容安全校验对外公开接口 (支持浏览器/小程序直接测试)
 router.all('/sec-check', async (req, res) => {
@@ -51,25 +178,23 @@ async function handleParseRequest(req, res) {
   const clientIp = req.ip || req.headers['x-forwarded-for'] || req.socket.remoteAddress;
 
   try {
-    // 后台 cURL / Axios 请求上游 API
-    const response = await axios.get(config.upstreamUrl, {
-      params: { url: targetUrl },
-      timeout: config.upstreamUrlTimeout || 15000,
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 16_6 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.6 Mobile/15E148 Safari/604.1',
-      },
-    });
+    const responseData = await fetchUpstream(config.upstreamUrl, targetUrl);
+    const normalized = await normalizeDouyinVideo(responseData, targetUrl);
 
     const responseTimeMs = Date.now() - startTime;
+    if (normalized.unsupported) {
+      logApiCall(req.apiKey, targetUrl, clientIp, 422, responseTimeMs);
+      return res.status(422).json(normalized.body);
+    }
     logApiCall(req.apiKey, targetUrl, clientIp, 200, responseTimeMs);
 
     // 移除上游接口返回的版权标识 (bktip)
-    const responseData = response.data;
-    if (responseData && typeof responseData === 'object') {
-      delete responseData.bktip;
+    const outputData = normalized.responseData || responseData;
+    if (outputData && typeof outputData === 'object') {
+      delete outputData.bktip;
     }
 
-    return res.json(responseData);
+    return res.json(outputData);
   } catch (err) {
     const responseTimeMs = Date.now() - startTime;
     const statusCode = err.response ? err.response.status : 500;
