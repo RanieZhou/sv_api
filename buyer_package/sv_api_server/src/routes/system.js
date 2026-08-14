@@ -1,6 +1,4 @@
 import express from 'express';
-import axios from 'axios';
-import { config } from '../config.js';
 import { queryOne, execute } from '../db.js';
 
 const router = express.Router();
@@ -76,7 +74,7 @@ const handleSaveApiKeyConfig = async (req, res) => {
   }
 };
 
-// 校验 API Key 有效性并返回额度与到期时间 (买家服务端转发给总站网关进行真实校验)
+// 校验 API Key 有效性并返回额度与到期时间
 router.get('/apiKey/verify', async (req, res) => {
   try {
     const key = (req.query.api_key || req.query.apiKey || '').trim();
@@ -89,41 +87,71 @@ router.get('/apiKey/verify', async (req, res) => {
       });
     }
 
-    // 从 config.upstreamUrl 中精准解析总站域名基址，构造 verify 校验地址
-    let masterHost = 'https://shortvideo.aihubzone.cn';
-    try {
-      const parsedUrl = new URL(config.upstreamUrl);
-      masterHost = `${parsedUrl.protocol}//${parsedUrl.host}`;
-    } catch (e) {}
+    const row = await queryOne(
+      'SELECT api_key, user_name, status, total_quota, used_quota, expire_time FROM api_keys WHERE api_key = ?',
+      [key]
+    );
 
-    // 防止买家将 UPSTREAM_API_URL 错配为买家自己的域名导致请求循环环路
-    const currentReqHost = (req.get('host') || '').toLowerCase();
-    if (currentReqHost && masterHost.toLowerCase().includes(currentReqHost)) {
-      masterHost = 'https://shortvideo.aihubzone.cn';
+    if (!row) {
+      return res.json({
+        code: 200,
+        success: true,
+        valid: false,
+        message: 'API Key 不存在，请检查输入'
+      });
     }
 
-    const masterVerifyUrl = `${masterHost}/api/apiKey/verify`;
+    if (row.status !== 1) {
+      return res.json({
+        code: 200,
+        success: true,
+        valid: false,
+        message: 'API Key 已被禁用'
+      });
+    }
 
-    const response = await axios.get(masterVerifyUrl, {
-      params: { apiKey: key, api_key: key },
-      timeout: 10000,
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+    if (row.expire_time && new Date(row.expire_time) < new Date()) {
+      return res.json({
+        code: 200,
+        success: true,
+        valid: false,
+        message: 'API Key 已过期'
+      });
+    }
+
+    const remainingCalls = row.total_quota === -1
+      ? '不限次数'
+      : `${Math.max(0, row.total_quota - row.used_quota)} 次`;
+
+    let expiryDate = '永不过期';
+    if (row.expire_time) {
+      let s = typeof row.expire_time === 'string' ? row.expire_time.trim() : (row.expire_time.toISOString ? row.expire_time.toISOString() : String(row.expire_time));
+      if (/^\d{4}-\d{2}-\d{2}\s\d{2}:\d{2}:\d{2}$/.test(s)) {
+        s = s.replace(' ', 'T') + 'Z';
+      }
+      const d = new Date(s);
+      if (!isNaN(d.getTime())) {
+        expiryDate = d.toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai', hour12: false });
+      }
+    }
+
+    return res.json({
+      code: 200,
+      success: true,
+      valid: true,
+      message: '密钥有效',
+      data: {
+        apiKey: row.api_key,
+        userName: row.user_name,
+        remainingCalls,
+        expiryDate,
+        totalQuota: row.total_quota,
+        usedQuota: row.used_quota
       }
     });
-
-    return res.json(response.data);
   } catch (err) {
-    console.error('向总站校验 API Key 失败:', err.message);
-    const errData = err.response ? err.response.data : null;
-    if (errData) {
-      return res.json(errData);
-    }
-    return res.status(500).json({
-      code: 500,
-      success: false,
-      message: '无法连接总站网关进行密钥校验: ' + err.message
-    });
+    console.error('校验 API Key 失败:', err);
+    return res.status(500).json({ code: 500, success: false, message: '校验 API Key 失败' });
   }
 });
 

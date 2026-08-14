@@ -5,7 +5,7 @@ const ENV_CONFIG = {
     API_BASE_URL: 'https://testsv.aihubzone.cn/api',
     SERVER_URL: 'https://testsv.aihubzone.cn'
   },
-
+  
   // 生产环境
   production: {
     API_BASE_URL: 'https://testsv.aihubzone.cn/api',

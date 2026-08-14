@@ -4,7 +4,7 @@
 --   CREATE DATABASE sv_api DEFAULT CHARSET utf8mb4 COLLATE utf8mb4_unicode_ci;
 -- ============================================================
 
-USE sv;
+USE sv_api;
 
 -- ============================================================
 -- 1. api_keys (API Key 账号与额度表)

@@ -1,4 +1,4 @@
-# 🚀 云边去水印小程序独立版 - 部署使用教程
+# 🚀 云边去水印小程序 - 部署使用教程
 
 欢迎使用云边去水印小程序全套独立部署源码包！
 
@@ -9,9 +9,9 @@
 解压源码包后包含以下 2 个文件夹：
 
 ```text
-buyer_package/
+package/
 ├── miniprogram/        # 微信小程序前端源码 (原生微信小程序)
-└── sv_api_server/      # 服务端核心程序 (包含 API 接口与 /admin/ 小程序管理后台)
+└── sv_api_server/      # 服务端核心程序 (包含 API 接口与 /admin小程序管理后台)
 ```
 
 ---
@@ -63,7 +63,6 @@ pm2 start src/app.js --name "sv-api-server"
 pm2 save
 pm2 startup
 ```
-
 
 ---
 

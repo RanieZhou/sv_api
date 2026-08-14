@@ -6,7 +6,7 @@
  * 必须通过 /api/proxy?url=<encodeURIComponent(原链)> 服务端中转才能正常加载。
  */
 
-const { getApiUrl, getServerUrl } = require('../config/env.js');
+const { getApiUrl } = require('../config/env.js');
 
 const DEFAULT_API_KEY = 'sk_test_00000000000000000000000000000001';
 
@@ -19,13 +19,13 @@ function extractDouyinUrl(text) {
   if (!text || typeof text !== 'string') {
     return '';
   }
-
+  
   // 匹配文本中的 http:// 或 https:// 链接
   const match = text.match(/https?:\/\/[^\s\u4e00-\u9fa5]+/i);
   if (match && match[0]) {
     return match[0].trim();
   }
-
+  
   return text.trim();
 }
 
@@ -114,15 +114,15 @@ function parseDouyinVideo(shareContent, apiKey = '') {
         reject(new Error('未在分享内容中找到有效的视频链接'));
         return;
       }
-
+      
       const finalApiKey = await getOrFetchApiKey(apiKey);
       console.log('正在提交解析链接:', cleanUrl, 'API Key:', finalApiKey ? finalApiKey.slice(0, 10) + '...' : '未传递');
-
+      
       const reqData = { url: cleanUrl };
       if (finalApiKey) {
         reqData.api_key = finalApiKey;
       }
-
+      
       wx.request({
         url: getApiUrl('/parse'),
         method: 'GET',
@@ -130,7 +130,7 @@ function parseDouyinVideo(shareContent, apiKey = '') {
         timeout: 15000,
         success: (res) => {
           console.log('解析接口返回:', res);
-
+          
           if (res.statusCode === 200 && res.data && (res.data.code === 200 || res.data.code === 0)) {
             const raw = res.data;
             const d = raw.data || raw;
@@ -160,10 +160,10 @@ function parseDouyinVideo(shareContent, apiKey = '') {
             // 抖音: extra.statistics.digg_count / comment_count / collect_count / share_count
             // 快手: extra.statistics.like_count / comment_count / share_count / play_count
             // 其他平台暂无
-            const likeCount = stats.digg_count || stats.like_count || 0;
+            const likeCount   = stats.digg_count  || stats.like_count    || 0;
             const commentCount = stats.comment_count || 0;
             const collectCount = stats.collect_count || 0;
-            const shareCount = stats.share_count || 0;
+            const shareCount   = stats.share_count   || 0;
 
             // ===== 视频 URL（各平台）=====
             // B站: d.url 或 d.videos[0].url
@@ -236,12 +236,22 @@ function parseDouyinVideo(shareContent, apiKey = '') {
               const ordered = [];
               QUALITY_ORDER.forEach(q => {
                 if (qualityMap[q]) {
-                  ordered.push({ label: q, url: qualityMap[q].url, bitRate: qualityMap[q].bit_rate });
+                  ordered.push({
+                    label: q,
+                    url: qualityMap[q].url,
+                    bitRate: qualityMap[q].bit_rate,
+                    codec: qualityMap[q].actual_codec || qualityMap[q].codec || ''
+                  });
                   delete qualityMap[q];
                 }
               });
               Object.values(qualityMap).forEach(item => {
-                ordered.push({ label: item.quality || item.label || '其他', url: item.url, bitRate: item.bit_rate });
+                ordered.push({
+                  label: item.quality || item.label || '其他',
+                  url: item.url,
+                  bitRate: item.bit_rate,
+                  codec: item.actual_codec || item.codec || ''
+                });
               });
               qualityOptions = ordered;
             }
@@ -299,7 +309,7 @@ function parseDouyinVideo(shareContent, apiKey = '') {
               // 清晰度
               qualityOptions,
             };
-
+            
             resolve(formattedData);
           } else {
             if (res.statusCode === 401 || res.data?.code === 401) {
@@ -491,6 +501,8 @@ function saveVideoToAlbum(filePath) {
           reject(new Error('未获得相册写入权限，请在权限设置中开启'));
         } else if (errMsg.includes('cancel')) {
           reject(new Error('用户取消了保存'));
+        } else if (errMsg.includes('invalid video') || errMsg.includes('invalid file type')) {
+          reject(new Error('视频编码不受手机相册支持，请重新解析后选择兼容清晰度'));
         } else {
           reject(new Error(errMsg));
         }
