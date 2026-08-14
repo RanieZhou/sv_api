@@ -216,6 +216,8 @@ function parseDouyinVideo(shareContent, apiKey = '') {
               backupList.forEach(item => {
                 if (!item.url) return;
                 if (item.format && item.format !== 'mp4') return; // 排除 dash
+                const actualCodec = String(item.actual_codec || item.codec || '').toLowerCase();
+                if (['bvc1', 'bvc2', 'bytevc1', 'bytevc2'].includes(actualCodec)) return;
                 const q = item.quality || item.label || '默认';
                 const br = item.bit_rate || 0;
                 if (!qualityMap[q] || br > qualityMap[q].bit_rate) {
@@ -226,12 +228,22 @@ function parseDouyinVideo(shareContent, apiKey = '') {
               const ordered = [];
               QUALITY_ORDER.forEach(q => {
                 if (qualityMap[q]) {
-                  ordered.push({ label: q, url: qualityMap[q].url, bitRate: qualityMap[q].bit_rate });
+                  ordered.push({
+                    label: q,
+                    url: qualityMap[q].url,
+                    bitRate: qualityMap[q].bit_rate,
+                    codec: qualityMap[q].actual_codec || qualityMap[q].codec || ''
+                  });
                   delete qualityMap[q];
                 }
               });
               Object.values(qualityMap).forEach(item => {
-                ordered.push({ label: item.quality || item.label || '其他', url: item.url, bitRate: item.bit_rate });
+                ordered.push({
+                  label: item.quality || item.label || '其他',
+                  url: item.url,
+                  bitRate: item.bit_rate,
+                  codec: item.actual_codec || item.codec || ''
+                });
               });
               qualityOptions = ordered;
             }
@@ -317,23 +329,28 @@ function parseDouyinVideo(shareContent, apiKey = '') {
 
 /**
  * 判断视频 URL 是否需要经过代理中转
- * 规则：只有抖音 CDN 域名需要代理，其他平台直接使用原始链接
+ * 规则：抖音/字节系 CDN 视频含有防盗链与鉴权头限制，必须经过服务端 /api/proxy 中转
  */
 function needsProxy(url) {
   if (!url) return false;
-  try {
-    const host = new URL(url).hostname;
-    // 抖音 CDN 域名（需要代理）
-    const douyinDomains = [
-      'zjcdn.com',        // 抖音主 CDN
-      'douyinvod.com',    // 抖音视频 CDN
-      'iesdouyin.com',    // 抖音分享域
-      'douyinstatic.com', // 抖音静态资源
-    ];
-    return douyinDomains.some(d => host.includes(d));
-  } catch (e) {
-    return false;
-  }
+  const lower = String(url).toLowerCase();
+  const douyinDomains = [
+    'zjcdn.com',
+    'douyinvod.com',
+    'iesdouyin.com',
+    'douyinstatic.com',
+    'douyin.com',
+    'bytevcloudcdn.com',
+    'bytedance.com',
+    'pstatp.com',
+    'toutiaovod.com',
+    'volccdn.com',
+    'snssdk.com',
+    'amemv.com',
+    'huoshan.com',
+    'aweme'
+  ];
+  return douyinDomains.some(d => lower.includes(d));
 }
 
 /**
@@ -476,6 +493,8 @@ function saveVideoToAlbum(filePath) {
           reject(new Error('未获得相册写入权限，请在权限设置中开启'));
         } else if (errMsg.includes('cancel')) {
           reject(new Error('用户取消了保存'));
+        } else if (errMsg.includes('invalid video') || errMsg.includes('invalid file type')) {
+          reject(new Error('视频编码不受手机相册支持，请重新解析后选择兼容清晰度'));
         } else {
           reject(new Error(errMsg));
         }

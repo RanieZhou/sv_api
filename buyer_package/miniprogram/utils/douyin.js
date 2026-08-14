@@ -317,23 +317,28 @@ function parseDouyinVideo(shareContent, apiKey = '') {
 
 /**
  * 判断视频 URL 是否需要经过代理中转
- * 规则：只有抖音 CDN 域名需要代理，其他平台直接使用原始链接
+ * 规则：抖音/字节系 CDN 视频含有防盗链与鉴权头限制，必须经过服务端 /api/proxy 中转
  */
 function needsProxy(url) {
   if (!url) return false;
-  try {
-    const host = new URL(url).hostname;
-    // 抖音 CDN 域名（需要代理）
-    const douyinDomains = [
-      'zjcdn.com',        // 抖音主 CDN
-      'douyinvod.com',    // 抖音视频 CDN
-      'iesdouyin.com',    // 抖音分享域
-      'douyinstatic.com', // 抖音静态资源
-    ];
-    return douyinDomains.some(d => host.includes(d));
-  } catch (e) {
-    return false;
-  }
+  const lower = String(url).toLowerCase();
+  const douyinDomains = [
+    'zjcdn.com',
+    'douyinvod.com',
+    'iesdouyin.com',
+    'douyinstatic.com',
+    'douyin.com',
+    'bytevcloudcdn.com',
+    'bytedance.com',
+    'pstatp.com',
+    'toutiaovod.com',
+    'volccdn.com',
+    'snssdk.com',
+    'amemv.com',
+    'huoshan.com',
+    'aweme'
+  ];
+  return douyinDomains.some(d => lower.includes(d));
 }
 
 /**
