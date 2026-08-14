@@ -168,6 +168,9 @@ function parseDouyinVideo(shareContent, apiKey = '') {
             // ===== 视频 URL（各平台）=====
             // B站: d.url 或 d.videos[0].url
             let videoUrl = d.url || d.video_url || d.play_url || '';
+            if (!videoUrl && d.video_backup && d.video_backup.length > 0) {
+              videoUrl = d.video_backup[0].url || '';
+            }
             if (!videoUrl && d.videos && d.videos.length > 0) {
               videoUrl = d.videos[0].url || '';
             }
@@ -213,9 +216,16 @@ function parseDouyinVideo(shareContent, apiKey = '') {
             if (backupList.length > 0) {
               // 过滤：排除 dash 格式；无 format 字段的也保留（视频号/快手）
               const qualityMap = {};
+              const hasH264 = backupList.some(item => {
+                const c = String(item.actual_codec || item.codec || '').toLowerCase();
+                return c && !['bvc1', 'bvc2', 'bytevc1', 'bytevc2'].includes(c);
+              });
+
               backupList.forEach(item => {
                 if (!item.url) return;
                 if (item.format && item.format !== 'mp4') return; // 排除 dash
+                const actualCodec = String(item.actual_codec || item.codec || '').toLowerCase();
+                if (hasH264 && ['bvc1', 'bvc2', 'bytevc1', 'bytevc2'].includes(actualCodec)) return;
                 const q = item.quality || item.label || '默认';
                 const br = item.bit_rate || 0;
                 if (!qualityMap[q] || br > qualityMap[q].bit_rate) {

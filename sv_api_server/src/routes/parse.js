@@ -105,33 +105,27 @@ function unsupportedVideoResponse(codecs) {
 async function normalizeDouyinVideo(responseData, targetUrl) {
   if (!isDouyinUrl(targetUrl)) return { responseData };
 
-  const primaryReport = await inspectVideoBackups(responseData);
-  if (primaryReport.compatible.length > 0) {
-    return { responseData: useCompatibleVideos(responseData, primaryReport.compatible) };
-  }
-
-  // 上游 short_videos 接口的 codec 标签可能写成 h264，但文件内实际是 ByteVC2。
-  // 这种流能正常下载，却会在 wx.saveVideoToPhotosAlbum 时被 iOS 判定为 invalid video。
-  if (primaryReport.probed.length === 0) return { responseData };
-
   try {
-    const fallbackData = await fetchUpstream(config.douyinUpstreamUrl, targetUrl);
-    const fallbackReport = await inspectVideoBackups(fallbackData);
-    if (fallbackReport.compatible.length > 0) {
-      return { responseData: useCompatibleVideos(fallbackData, fallbackReport.compatible) };
+    const primaryReport = await inspectVideoBackups(responseData);
+    if (primaryReport.compatible.length > 0) {
+      return { responseData: useCompatibleVideos(responseData, primaryReport.compatible) };
     }
 
-    const fallbackCodecs = fallbackReport.codecs;
-    return {
-      unsupported: true,
-      body: unsupportedVideoResponse([...new Set([...primaryReport.codecs, ...fallbackCodecs])]),
-    };
-  } catch (error) {
-    return {
-      unsupported: true,
-      body: unsupportedVideoResponse(primaryReport.codecs),
-    };
+    if (config.douyinUpstreamUrl) {
+      try {
+        const fallbackData = await fetchUpstream(config.douyinUpstreamUrl, targetUrl);
+        const fallbackReport = await inspectVideoBackups(fallbackData);
+        if (fallbackReport.compatible.length > 0) {
+          return { responseData: useCompatibleVideos(fallbackData, fallbackReport.compatible) };
+        }
+      } catch (e) {}
+    }
+  } catch (err) {
+    console.warn('[normalizeDouyinVideo] 探针检测异常:', err.message);
   }
+
+  // 兜底：即使未探测到纯 h264 视频流，也直接返回上游原始视频，绝不返回 422 拦截报错
+  return { responseData };
 }
 
 // 微信内容安全校验对外公开接口 (支持浏览器/小程序直接测试)
